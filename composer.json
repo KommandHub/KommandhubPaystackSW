@@ -15,6 +15,25 @@
         "africa",
         "kommandhub"
     ],
+    "authors": [
+        {
+            "name": "Kommandhub Limited",
+            "email": "admin@kommandhub.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "kommandhub/foundation-sw": "^1.0.1",
+        "shopware/core": "~6.6.0 || ~6.7.0",
+        "shopware/fixture-bundle": "^0.1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5",
+        "shopware/dev-tools": "^1.5",
+        "friendsofphp/php-cs-fixer": "^3.94",
+        "phpstan/phpstan": "^2.1",
+        "rregeer/phpunit-coverage-check": "^0.3.1"
+    },
     "autoload": {
         "psr-4": {
             "Kommandhub\\PaystackSW\\": "src/"
@@ -24,24 +43,6 @@
         "psr-4": {
             "Kommandhub\\PaystackSW\\Tests\\": "tests/"
         }
-    },
-    "authors": [
-        {
-            "name": "Kommandhub Limited",
-            "email": "admin@kommandhub.com",
-            "role": "Developer"
-        }
-    ],
-    "require": {
-        "shopware/core": "~6.6.0 || ~6.7.0",
-        "kommandhub/paystack": "^1.0"
-    },
-    "require-dev": {
-        "phpunit/phpunit": "^11.5",
-        "shopware/dev-tools": "^1.5",
-        "friendsofphp/php-cs-fixer": "^3.94",
-        "phpstan/phpstan": "^2.1",
-        "rregeer/phpunit-coverage-check": "^0.3.1"
     },
     "extra": {
         "shopware-plugin-class": "Kommandhub\\PaystackSW\\KommandhubPaystackSW",
@@ -54,11 +55,22 @@
             "de-DE": "Integriert die Paystack-Zahlungs-Gateway in Shopware 6.",
             "en-GB": "Integrates the Paystack payment gateway into Shopware 6.",
             "fr-FR": "Intègre la passerelle de paiement Paystack dans Shopware 6."
+        },
+        "manufacturerLink": {
+            "de-DE": "https://kommandhub.com",
+            "en-GB": "https://kommandhub.com"
+        },
+        "supportLink": {
+            "de-DE": "https://kommandhub.com/support",
+            "en-GB": "https://kommandhub.com/support"
         }
     },
     "config": {
         "allow-plugins": {
             "symfony/runtime": true
-        }
-    }
+        },
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }

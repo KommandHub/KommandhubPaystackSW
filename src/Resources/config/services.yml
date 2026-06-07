@@ -8,26 +8,6 @@ services:
     resource: '../../*'
     exclude: '../../{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
 
-  Kommandhub\PaystackSW\Service\OrderTransactionService:
-    arguments:
-      $orderTransactionRepository: '@order_transaction.repository'
-
   Kommandhub\PaystackSW\Checkout\Payment\PaystackPaymentHandler:
-    arguments:
-      $orderTransactionService: '@Kommandhub\PaystackSW\Service\OrderTransactionService'
-      $transactionService: '@Kommandhub\PaystackSW\Service\TransactionService'
-      $payloadBuilder: '@Kommandhub\PaystackSW\Service\PayloadBuilder'
     tags:
       - { name: 'shopware.payment_handler' }
-
-  Kommandhub\PaystackSW\Service\PaystackFactory:
-    arguments:
-      $config: '@Kommandhub\PaystackSW\Service\Config'
-      $client: '@GuzzleHttp\Client'
-      $requestFactory: '@Nyholm\Psr7\Factory\Psr17Factory'
-      $streamFactory: '@Nyholm\Psr7\Factory\Psr17Factory'
-
-  GuzzleHttp\Client: ~
-
-  Kommandhub\Paystack\Paystack:
-    factory: ['@Kommandhub\PaystackSW\Service\PaystackFactory', 'create']

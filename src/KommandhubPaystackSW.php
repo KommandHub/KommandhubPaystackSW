@@ -122,7 +122,7 @@ class KommandhubPaystackSW extends Plugin
     {
         /** @phpstan-ignore-next-line */
         if (!isset($this->container) || $this->container === null) {
-            return null;
+            return null; // @codeCoverageIgnore
         }
 
         /** @var EntityRepository $paymentMethodRepository */

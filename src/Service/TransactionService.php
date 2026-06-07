@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Service;
 
-use Kommandhub\Paystack\Paystack;
-use Kommandhub\Paystack\Exceptions\PaystackException;
+use Kommandhub\PaystackSW\Exceptions\PaystackException;
 
 class TransactionService
 {

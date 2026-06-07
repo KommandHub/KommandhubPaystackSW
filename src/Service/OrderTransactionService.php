@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Service;
 
+use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionReader;
+use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionWriter;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Checkout\Payment\PaymentException;
 
-class OrderTransactionService
+readonly class OrderTransactionService
 {
     public function __construct(
-        private readonly EntityRepository $orderTransactionRepository
+        private OrderTransactionReader $orderTransactionReader,
+        private OrderTransactionWriter $orderTransactionWriter,
     ) {
     }
 
@@ -25,8 +27,11 @@ class OrderTransactionService
      */
     public function get(string $transactionId, Context $context): OrderTransactionEntity
     {
-        $criteria = $this->getCriteria([$transactionId]);
-        $orderTransaction = $this->orderTransactionRepository->search($criteria, $context)->first();
+        $orderTransaction = $this->orderTransactionReader->readOneById(
+            $transactionId,
+            $context,
+            $this->getCriteria()
+        );
 
         if (!$orderTransaction instanceof OrderTransactionEntity) {
             throw PaymentException::asyncProcessInterrupted(
@@ -45,16 +50,22 @@ class OrderTransactionService
      */
     public function updateCustomFields(string $transactionId, array $customFields, Context $context): void
     {
-        $this->orderTransactionRepository->update([[
+        $this->orderTransactionWriter->write([
             'id' => $transactionId,
             'customFields' => $customFields,
-        ]], $context);
+        ], $context);
     }
 
-    private function getCriteria(array $ids = []): Criteria
+    private function getCriteria(): Criteria
     {
-        $criteria = empty($ids) ? new Criteria() : new Criteria($ids);
-        $criteria->addAssociations(['order.currency', 'order.orderCustomer.salutation']);
+        $criteria = new Criteria();
+        $criteria->addAssociations([
+            'order.currency',
+            'order.lineItems',
+            'order.orderCustomer.salutation',
+            'order.billingAddress.country',
+            'order.deliveries.shippingOrderAddress.country',
+        ]);
 
         return $criteria;
     }

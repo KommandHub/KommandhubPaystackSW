@@ -6,20 +6,22 @@ namespace Kommandhub\PaystackSW\Tests\Integration\Checkout\Payment;
 
 use Kommandhub\PaystackSW\Checkout\Payment\PaystackPaymentHandler;
 use Kommandhub\PaystackSW\Service\Config;
+use Kommandhub\PaystackSW\Exceptions\PaystackException;
 use Kommandhub\PaystackSW\Service\OrderTransactionService;
 use Kommandhub\PaystackSW\Service\PayloadBuilder;
+use Kommandhub\PaystackSW\Service\PaymentFinalizedEventService;
 use Kommandhub\PaystackSW\Service\TransactionService;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
-use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
+use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\PaymentHandlerType;
+use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Framework\Context;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Kommandhub\Paystack\Exceptions\PaystackException;
 
 class PaystackPaymentHandlerTest extends TestCase
 {
@@ -28,6 +30,7 @@ class PaystackPaymentHandlerTest extends TestCase
     private PayloadBuilder $payloadBuilder;
     private OrderTransactionStateHandler $transactionStateHandler;
     private Config $config;
+    private PaymentFinalizedEventService $paymentFinalizedEventService;
     private LoggerInterface $logger;
     private PaystackPaymentHandler $handler;
 
@@ -38,6 +41,7 @@ class PaystackPaymentHandlerTest extends TestCase
         $this->payloadBuilder = $this->createMock(PayloadBuilder::class);
         $this->transactionStateHandler = $this->createMock(OrderTransactionStateHandler::class);
         $this->config = $this->createMock(Config::class);
+        $this->paymentFinalizedEventService = $this->createMock(PaymentFinalizedEventService::class);
         $this->logger = $this->createMock(LoggerInterface::class);
 
         $this->handler = new PaystackPaymentHandler(
@@ -46,6 +50,7 @@ class PaystackPaymentHandlerTest extends TestCase
             $this->payloadBuilder,
             $this->transactionStateHandler,
             $this->config,
+            $this->paymentFinalizedEventService,
             $this->logger
         );
     }
@@ -113,8 +118,10 @@ class PaystackPaymentHandlerTest extends TestCase
         $request = new Request(['reference' => 'test_ref']);
         $transaction = new PaymentTransactionStruct($transactionId, 'https://return.url');
 
+        $order = $this->createMock(OrderEntity::class);
         $orderTransaction = $this->createMock(OrderTransactionEntity::class);
         $orderTransaction->method('getId')->willReturn($transactionId);
+        $orderTransaction->method('getOrder')->willReturn($order);
 
         $this->orderTransactionService->method('get')->willReturn($orderTransaction);
 
@@ -132,6 +139,8 @@ class PaystackPaymentHandlerTest extends TestCase
 
         $this->transactionStateHandler->expects($this->once())->method('paid');
         $this->orderTransactionService->expects($this->once())->method('updateCustomFields');
+        $this->paymentFinalizedEventService->expects($this->once())->method('fireEvent')
+            ->with($order, $orderTransaction, $transaction, $context);
 
         $this->handler->finalize($request, $transaction, $context);
     }
@@ -149,6 +158,7 @@ class PaystackPaymentHandlerTest extends TestCase
         $this->orderTransactionService->method('get')->willReturn($orderTransaction);
 
         $this->expectException(PaymentException::class);
+        $this->expectExceptionMessage('Payment reference is missing from the request.');
 
         $this->handler->finalize($request, $transaction, $context);
     }
@@ -211,7 +221,7 @@ class PaystackPaymentHandlerTest extends TestCase
         $this->transactionService->method('verify')->willReturn(['status' => false, 'message' => 'Verification failed']);
 
         $this->expectException(PaymentException::class);
-        $this->expectExceptionMessage('Verification failed');
+        $this->expectExceptionMessage('Unable to verify payment: Verification failed');
 
         $this->handler->finalize($request, $transaction, $context);
     }
@@ -296,6 +306,40 @@ class PaystackPaymentHandlerTest extends TestCase
         }
     }
 
+    public function testFinalizeSuccessfulWithMissingOrderInTransaction(): void
+    {
+        $context = Context::createDefaultContext();
+        $transactionId = 'transaction-id';
+        $request = new Request(['reference' => 'test_ref']);
+        $transaction = new PaymentTransactionStruct($transactionId, 'https://return.url');
+
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $orderTransaction->method('getId')->willReturn($transactionId);
+        $orderTransaction->method('getOrder')->willReturn(null);
+
+        $this->orderTransactionService->method('get')->willReturn($orderTransaction);
+
+        $verificationResult = [
+            'status' => true,
+            'data' => [
+                'id' => 123,
+                'channel' => 'card',
+                'fees' => 150,
+                'amount' => 10000,
+                'currency' => 'NGN',
+            ],
+        ];
+        $this->transactionService->method('verify')->with('test_ref')->willReturn($verificationResult);
+
+        $this->transactionStateHandler->expects($this->once())->method('paid');
+        $this->orderTransactionService->expects($this->once())->method('updateCustomFields');
+
+        // This should not call fireEvent because order is null
+        $this->paymentFinalizedEventService->expects($this->never())->method('fireEvent');
+
+        $this->handler->finalize($request, $transaction, $context);
+    }
+
     public function testPayFailsWhenAuthorizationUrlIsMissing(): void
     {
         $context = Context::createDefaultContext();
@@ -314,5 +358,77 @@ class PaystackPaymentHandlerTest extends TestCase
         $this->expectExceptionMessage('Paystack did not return a checkout URL');
 
         $this->handler->pay($request, $transaction, $context, null);
+    }
+
+    public function testLoggingDisabled(): void
+    {
+        $this->config->method('getBool')->willReturn(false);
+        $this->logger->expects($this->never())->method('info');
+        $this->logger->expects($this->never())->method('error');
+
+        $context = Context::createDefaultContext();
+        $request = new Request(['reference' => 'test_ref']);
+        $transactionId = 'transaction-id';
+        $transaction = new PaymentTransactionStruct($transactionId, 'https://return.url');
+
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $orderTransaction->method('getId')->willReturn($transactionId);
+        $this->orderTransactionService->method('get')->willReturn($orderTransaction);
+
+        $this->payloadBuilder->method('build')->willReturn(['payload']);
+        $this->transactionService->method('initialize')->willReturn(['status' => true, 'data' => ['authorization_url' => 'http://url']]);
+        $this->transactionService->method('verify')->willReturn(['status' => true, 'data' => ['id' => 'paystack_id']]);
+
+        $this->handler->pay($request, $transaction, $context, null);
+        $this->handler->finalize($request, $transaction, $context);
+
+        // Also trigger an error path with debugging disabled
+        $this->transactionService->method('verify')->willReturn(['status' => false, 'message' => 'failed']);
+
+        try {
+            $this->handler->finalize($request, $transaction, $context);
+        } catch (PaymentException) {
+        }
+    }
+
+    public function testPersistTransactionMetadataWithMissingData(): void
+    {
+        $context = Context::createDefaultContext();
+        $transactionId = 'transaction-id';
+        $request = new Request(['reference' => 'test_ref']);
+        $transaction = new PaymentTransactionStruct($transactionId, 'https://return.url');
+
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $orderTransaction->method('getId')->willReturn($transactionId);
+        $this->orderTransactionService->method('get')->willReturn($orderTransaction);
+
+        // Verification data with missing optional fields
+        $verificationResult = [
+            'status' => true,
+            'data' => [
+                // 'id' missing
+                // 'channel' missing
+                // 'fees' missing
+                // 'amount' missing
+                // 'currency' missing
+            ],
+        ];
+        $this->transactionService->method('verify')->willReturn($verificationResult);
+
+        $this->orderTransactionService->expects($this->once())
+            ->method('updateCustomFields')
+            ->with(
+                $transactionId,
+                $this->callback(function (array $fields) {
+                    return array_key_exists('paystack_transaction_id', $fields) && $fields['paystack_transaction_id'] === null
+                        && array_key_exists('paystack_payment_type', $fields) && $fields['paystack_payment_type'] === null
+                        && array_key_exists('paystack_transaction_fee', $fields) && $fields['paystack_transaction_fee'] === null
+                        && array_key_exists('paystack_amount', $fields) && $fields['paystack_amount'] === null
+                        && array_key_exists('paystack_currency', $fields) && $fields['paystack_currency'] === null;
+                }),
+                $context
+            );
+
+        $this->handler->finalize($request, $transaction, $context);
     }
 }

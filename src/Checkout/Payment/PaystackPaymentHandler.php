@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Checkout\Payment;
 
-use Kommandhub\Paystack\Exceptions\PaystackException;
-use Kommandhub\PaystackSW\Util\PaystackConstants;
+use DateTimeImmutable;
 use Kommandhub\PaystackSW\Service\Config;
+use Kommandhub\PaystackSW\Exceptions\PaystackException;
 use Kommandhub\PaystackSW\Service\OrderTransactionService;
 use Kommandhub\PaystackSW\Service\PayloadBuilder;
+use Kommandhub\PaystackSW\Service\PaymentFinalizedEventService;
 use Kommandhub\PaystackSW\Service\TransactionService;
+use Kommandhub\PaystackSW\Util\PaystackConstants;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
+use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Framework\Context;
@@ -21,12 +24,9 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * PaystackPaymentHandler is responsible for handling payment transactions with Paystack in a Shopware environment.
- *
- * This class implements the necessary methods to initialize payments, handle callbacks from Paystack, and update
- * the order transaction state accordingly. It also manages custom fields to store Paystack transaction details.
+ * Handles Paystack payment initialization and finalization.
  */
-class PaystackPaymentHandler extends AbstractPaystackPaymentHandler
+final class PaystackPaymentHandler extends AbstractPaystackPaymentHandler
 {
     public function __construct(
         private readonly OrderTransactionService $orderTransactionService,
@@ -34,228 +34,349 @@ class PaystackPaymentHandler extends AbstractPaystackPaymentHandler
         private readonly PayloadBuilder $payloadBuilder,
         private readonly OrderTransactionStateHandler $transactionStateHandler,
         private readonly Config $config,
+        private readonly PaymentFinalizedEventService $paymentFinalizedEventService,
         private readonly LoggerInterface $logger
     ) {
     }
 
     /**
-     * Initializes the payment process by preparing the payload and redirecting to Paystack's checkout page.
+     * Initializes a Paystack payment session.
      *
-     * @param Request $request The HTTP request object containing request data.
-     * @param PaymentTransactionStruct $transaction The payment transaction struct from Shopware.
-     * @param Context $context The Shopware context for the operation.
-     * @param Struct|null $validateStruct Optional struct for additional validation (not used in this implementation).
-     *
-     * @return RedirectResponse|null A redirect response to Paystack's checkout page or null if initialization fails.
-     *
-     * @throws PaymentException If there is an error during payment initialization or communication with Paystack.
+     * @throws PaymentException
      */
-    public function pay(Request $request, PaymentTransactionStruct $transaction, Context $context, ?Struct $validateStruct): ?RedirectResponse
-    {
-        // 1. Retrieve the full order transaction entity including associated order and customer data.
-        $orderTransaction = $this->orderTransactionService->get($transaction->getOrderTransactionId(), $context);
-
-        try {
-            // 2. Prepare the payment payload for Paystack initialization.
-            $payload = $this->payloadBuilder->build($orderTransaction, $transaction);
-        } catch (\RuntimeException $e) {
-            // Handle cases where required order data might be missing.
-            if ($this->config->getBool('enableDebugging', null)) {
-                $this->logger->error('Failed to build payment payload for Paystack.', [
-                    'transaction_id' => $transaction->getOrderTransactionId(),
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            throw PaymentException::asyncProcessInterrupted(
-                $transaction->getOrderTransactionId(),
-                'Unable to prepare payment data: ' . $e->getMessage()
-            );
-        }
-
-        try {
-            // 3. Initialize the transaction with Paystack API.
-            $response = $this->transactionService->initialize($payload);
-
-            // 4. Validate the response status. Status 'true' indicates successful initialization.
-            if (($response['status'] ?? '') !== true) {
-                throw PaymentException::asyncProcessInterrupted(
-                    $transaction->getOrderTransactionId(),
-                    'Paystack declined to initialize the payment: ' . ($response['message'] ?? 'No reason provided')
-                );
-            }
-
-            // Log initialization success if debugging is enabled.
-            if ($this->config->getBool('enableDebugging', null)) {
-                $this->logger->info('Paystack payment session initialized successfully.', [
-                    'transaction_id' => $transaction->getOrderTransactionId(),
-                    'paystack_response' => $response,
-                ]);
-            }
-
-            // 5. Redirect the customer to Paystack's hosted checkout page.
-            if (!isset($response['data']['authorization_url'])) {
-                throw PaymentException::asyncProcessInterrupted(
-                    $transaction->getOrderTransactionId(),
-                    'Paystack did not return a checkout URL. Please try again or contact support.'
-                );
-            }
-
-            return new RedirectResponse($response['data']['authorization_url']);
-        } catch (PaystackException $e) {
-            // Handle network errors or API-specific failures.
-            // @codeCoverageIgnoreStart
-            if ($this->config->getBool('enableDebugging', null)) {
-                $this->logger->error('Communication error with Paystack during payment initialization.', [
-                    'transaction_id' => $transaction->getOrderTransactionId(),
-                    'error' => $e->getMessage(),
-                ]);
-            }
-            // @codeCoverageIgnoreEnd
-            throw PaymentException::asyncProcessInterrupted(
-                $transaction->getOrderTransactionId(),
-                'A communication error occurred with the payment gateway. Please try again.' . PHP_EOL . $e->getMessage()
-            );
-        }
-    }
-
-    /**
-     * Finalizes the payment process after returning from the payment gateway.
-     *
-     * @param Request $request
-     * @param PaymentTransactionStruct $transaction
-     * @param Context $context
-     *
-     * @return void
-     *
-     * @throws PaystackException
-     */
-    public function finalize(Request $request, PaymentTransactionStruct $transaction, Context $context): void
-    {
-        // 1. Retrieve the order transaction.
-        $orderTransaction = $this->orderTransactionService->get($transaction->getOrderTransactionId(), $context);
-
-        // 2. Extract query parameters from the callback URL (e.g., 'reference').
-        $queryParams = $request->query->all();
-
-        // 3. Verify the payment status with Paystack's verification endpoint using the reference.
-        $verificationResult = $this->verifyPayment($orderTransaction, $queryParams);
-
-        // 4. Update the order transaction state and store relevant transaction metadata.
-        $this->completePaymentProcessing($orderTransaction, $transaction, $context, $queryParams, $verificationResult);
-    }
-
-    /**
-     * Verifies a payment transaction with Paystack.
-     *
-     * @param OrderTransactionEntity $orderTransaction The Shopware order transaction entity.
-     * @param array $queryParams Query parameters containing at least the 'transaction_id'.
-     *
-     * @return array The verification result from Paystack.
-     *
-     * @throws PaystackException If the transaction ID is missing or verification fails.
-     */
-    private function verifyPayment(OrderTransactionEntity $orderTransaction, array $queryParams): array
-    {
-        // 1. Check for the 'reference' parameter in the query parameters.
-        $reference = $queryParams['reference'] ?? null;
-
-        if (!$reference) {
-            if ($this->config->getBool('enableDebugging', null)) {
-                $this->logger->error('Payment callback received without a transaction reference.', [
-                    'transaction_id' => $orderTransaction->getId(),
-                    'query_params' => $queryParams,
-                ]);
-            }
-            throw PaymentException::invalidTransaction($orderTransaction->getId());
-        }
-
-        // 2. Call the Paystack verification service.
-        $verificationResult = $this->transactionService->verify($reference);
-
-        // 3. Validate the verification response status.
-        if (($verificationResult['status'] ?? '') !== true) {
-            if ($this->config->getBool('enableDebugging', null)) {
-                $this->logger->error('Paystack payment verification failed.', [
-                    'transaction_id' => $orderTransaction->getId(),
-                    'verification_result' => $verificationResult,
-                ]);
-            }
-            throw PaymentException::asyncFinalizeInterrupted(
-                $orderTransaction->getId(),
-                'Payment could not be verified: ' . ($verificationResult['message'] ?? 'No reason provided')
-            );
-        }
-
-        // Log success if debugging is enabled.
-        if ($this->config->getBool('enableDebugging', null)) {
-            $this->logger->info('Paystack payment verified successfully.', [
-                'transaction_id' => $orderTransaction->getId(),
-                'verification_result' => $verificationResult,
-            ]);
-        }
-
-        return $verificationResult;
-    }
-
-    /**
-     * Completes the payment processing by updating transaction state and custom fields.
-     *
-     * @param OrderTransactionEntity $orderTransaction The order transaction entity.
-     * @param PaymentTransactionStruct $transaction Payment transaction data.
-     * @param Context $context Shopware context.
-     * @param array $queryParams Query parameters from the payment gateway.
-     * @param array $verificationResult Result from payment verification.
-     */
-    protected function completePaymentProcessing(
-        OrderTransactionEntity $orderTransaction,
+    public function pay(
+        Request $request,
         PaymentTransactionStruct $transaction,
         Context $context,
-        array $queryParams,
-        array $verificationResult
-    ): void {
-        // Mark the transaction as paid in Shopware.
-        $this->transactionStateHandler->paid($transaction->getOrderTransactionId(), $context);
+        ?Struct $validateStruct
+    ): RedirectResponse {
+        $transactionId = $transaction->getOrderTransactionId();
 
-        // Update the order transaction with custom fields built from the payment gateway response and verification result.
-        $this->orderTransactionService->updateCustomFields($transaction->getOrderTransactionId(), [
-            PaystackConstants::FIELD_REFERENCE       => $queryParams['reference'] ?? null,
-            PaystackConstants::FIELD_TRANSACTION_ID  => $verificationResult['data']['id'] ?? null,
-            PaystackConstants::FIELD_PAYMENT_TYPE    => $verificationResult['data']['channel'] ?? null,
-            PaystackConstants::FIELD_TRANSACTION_FEE => isset($verificationResult['data']['fees']) ? ($verificationResult['data']['fees'] / 100) : null,
-            PaystackConstants::FIELD_AMOUNT          => isset($verificationResult['data']['amount']) ? ($verificationResult['data']['amount'] / 100) : null,
-            PaystackConstants::FIELD_CURRENCY        => $verificationResult['data']['currency'] ?? null,
-            PaystackConstants::FIELD_VERIFIED_AT     => (new \DateTime())->format('Y-m-d H:i:s'),
-        ], $context);
+        $orderTransaction = $this->orderTransactionService->get(
+            $transactionId,
+            $context
+        );
 
-        // If debugging is enabled in the plugin configuration, log payment finalization details for troubleshooting.
-        if ($this->config->getBool('enableDebugging', $orderTransaction->getOrder()?->getSalesChannelId())) {
-            $this->logger->info('Payment finalized and order transaction updated.', [
-                'transaction_id' => $transaction->getOrderTransactionId(),
-                'paystack_transaction_id' => $verificationResult['data']['id'] ?? null,
-                'paystack_reference' => $queryParams['reference'] ?? null,
-            ]);
+        try {
+            $payload = $this->payloadBuilder->build(
+                $orderTransaction,
+                $transaction
+            );
+
+            $response = $this->transactionService->initialize($payload);
+        } catch (\RuntimeException $exception) {
+            $this->logError(
+                'Failed to build Paystack payment payload.',
+                $transactionId,
+                ['exception' => $exception]
+            );
+
+            throw PaymentException::asyncProcessInterrupted(
+                $transactionId,
+                sprintf(
+                    'Unable to prepare payment payload: %s',
+                    $exception->getMessage()
+                )
+            );
+        } catch (PaystackException $exception) {
+            $this->logError(
+                'Paystack communication error during initialization.',
+                $transactionId,
+                ['exception' => $exception]
+            );
+
+            throw PaymentException::asyncProcessInterrupted(
+                $transactionId,
+                'A communication error occurred with the payment gateway'
+            );
         }
+
+        if (($response['status'] ?? false) !== true) {
+            throw PaymentException::asyncProcessInterrupted(
+                $transactionId,
+                sprintf(
+                    'Paystack declined to initialize the payment: %s',
+                    $response['message'] ?? 'Unknown error'
+                )
+            );
+        }
+
+        $authorizationUrl = $response['data']['authorization_url'] ?? null;
+
+        if (!is_string($authorizationUrl) || $authorizationUrl === '') {
+            throw PaymentException::asyncProcessInterrupted(
+                $transactionId,
+                'Paystack did not return a checkout URL'
+            );
+        }
+
+        $this->logInfo(
+            'Paystack payment initialized successfully.',
+            $transactionId,
+            ['response' => $response]
+        );
+
+        return new RedirectResponse($authorizationUrl);
     }
 
     /**
-     * @param string $transactionId
-     * @param Context $context
+     * Finalizes a Paystack payment.
      *
-     * @return OrderTransactionEntity
+     * @throws PaystackException
+     * @throws PaymentException
+     */
+    public function finalize(
+        Request $request,
+        PaymentTransactionStruct $transaction,
+        Context $context
+    ): void {
+        $transactionId = $transaction->getOrderTransactionId();
+
+        $orderTransaction = $this->orderTransactionService->get(
+            $transactionId,
+            $context
+        );
+
+        $reference = $this->extractReference(
+            $request,
+            $orderTransaction
+        );
+
+        $verification = $this->verifyTransaction(
+            $reference,
+            $orderTransaction,
+            $context
+        );
+
+        $this->markTransactionAsPaid(
+            $transaction,
+            $context
+        );
+
+        $this->persistTransactionMetadata(
+            $transactionId,
+            $reference,
+            $verification,
+            $context
+        );
+
+        $this->dispatchFinalizedEvent(
+            $orderTransaction,
+            $transaction,
+            $context
+        );
+
+        $data = $verification['data'] ?? [];
+        $paystackTransactionId = null;
+        if (is_array($data) && isset($data['id'])) {
+            $paystackTransactionId = $data['id'];
+        }
+
+        $this->logInfo(
+            'Paystack payment finalized successfully.',
+            $transactionId,
+            [
+                'reference' => $reference,
+                'paystack_transaction_id' => $paystackTransactionId,
+            ]
+        );
+    }
+
+    /**
+     * Extracts and validates Paystack reference.
+     */
+    private function extractReference(
+        Request $request,
+        OrderTransactionEntity $transaction
+    ): string {
+        $reference = $request->query->getString('reference');
+
+        if ($reference === '') {
+            $this->logError(
+                'Missing Paystack transaction reference.',
+                $transaction->getId(),
+                ['query' => $request->query->all()]
+            );
+
+            throw PaymentException::customerCanceled(
+                $transaction->getId(),
+                'Payment reference is missing from the request.'
+            );
+        }
+
+        return $reference;
+    }
+
+    /**
+     * Verifies transaction against Paystack API.
      *
-     * @deprecated Use OrderTransactionService::get() instead
+     * @return array<string, mixed>
+     *
+     * @throws PaystackException
+     * @throws PaymentException
+     */
+    private function verifyTransaction(
+        string $reference,
+        OrderTransactionEntity $transaction,
+        Context $context
+    ): array {
+        $verification = $this->transactionService->verify($reference);
+
+        if (($verification['status'] ?? false) !== true) {
+            $this->transactionStateHandler->fail($transaction->getId(), $context);
+
+            $this->logError(
+                'Paystack payment verification failed.',
+                $transaction->getId(),
+                ['verification' => $verification]
+            );
+
+            throw PaymentException::asyncFinalizeInterrupted(
+                $transaction->getId(),
+                sprintf(
+                    'Unable to verify payment: %s',
+                    $verification['message'] ?? 'Unknown error'
+                )
+            );
+        }
+
+        return $verification;
+    }
+
+    /**
+     * Marks Shopware transaction as paid.
+     */
+    private function markTransactionAsPaid(
+        PaymentTransactionStruct $transaction,
+        Context $context
+    ): void {
+        $this->transactionStateHandler->paid(
+            $transaction->getOrderTransactionId(),
+            $context
+        );
+    }
+
+    /**
+     * Persists Paystack metadata into transaction custom fields.
+     *
+     * @param array<string, mixed> $verification
+     */
+    private function persistTransactionMetadata(
+        string $transactionId,
+        string $reference,
+        array $verification,
+        Context $context
+    ): void {
+        $data = $verification['data'] ?? [];
+
+        if (!is_array($data)) {
+            $data = [];
+        }
+
+        $this->orderTransactionService->updateCustomFields(
+            $transactionId,
+            [
+                PaystackConstants::FIELD_REFERENCE => $reference,
+                PaystackConstants::FIELD_TRANSACTION_ID => $data['id'] ?? null,
+                PaystackConstants::FIELD_PAYMENT_TYPE => $data['channel'] ?? null,
+                PaystackConstants::FIELD_TRANSACTION_FEE => isset($data['fees']) && is_numeric($data['fees'])
+                    ? ((float)$data['fees'] / 100)
+                    : null,
+                PaystackConstants::FIELD_AMOUNT => isset($data['amount']) && is_numeric($data['amount'])
+                    ? ((float)$data['amount'] / 100)
+                    : null,
+                PaystackConstants::FIELD_CURRENCY => $data['currency'] ?? null,
+                PaystackConstants::FIELD_VERIFIED_AT => (
+                new DateTimeImmutable()
+                )->format('Y-m-d H:i:s'),
+            ],
+            $context
+        );
+    }
+
+    /**
+     * Dispatches finalized payment event.
+     */
+    private function dispatchFinalizedEvent(
+        OrderTransactionEntity $orderTransaction,
+        PaymentTransactionStruct $transaction,
+        Context $context
+    ): void {
+        $order = $orderTransaction->getOrder();
+
+        if (!$order instanceof OrderEntity) {
+            return;
+        }
+
+        $this->paymentFinalizedEventService->fireEvent(
+            $order,
+            $orderTransaction,
+            $transaction,
+            $context
+        );
+    }
+
+    /**
+     * Retrieves the order transaction entity.
+     *
+     * @throws PaymentException
      */
     public function getOrderTransaction(string $transactionId, Context $context): OrderTransactionEntity
     {
-        $orderTransaction = $this->orderTransactionService->get($transactionId, $context);
+        return $this->orderTransactionService->get($transactionId, $context);
+    }
 
-        if ($this->config->getBool('enableDebugging', $orderTransaction->getOrder()?->getSalesChannelId())) {
-            $this->logger->info('Order transaction loaded successfully.', [
-                'transaction_id' => $transactionId,
-            ]);
+    /**
+     * Logs informational messages when debugging is enabled.
+     *
+     * @param array<string, mixed> $contextData
+     */
+    private function logInfo(
+        string $message,
+        string $transactionId,
+        array $contextData = []
+    ): void {
+        if (!$this->isDebugEnabled()) {
+            return;
         }
 
-        return $orderTransaction;
+        $this->logger->info(
+            $message,
+            array_merge(
+                ['transaction_id' => $transactionId],
+                $contextData
+            )
+        );
+    }
+
+    /**
+     * Logs errors when debugging is enabled.
+     *
+     * @param array<string, mixed> $contextData
+     */
+    private function logError(
+        string $message,
+        string $transactionId,
+        array $contextData = []
+    ): void {
+        if (!$this->isDebugEnabled()) {
+            return;
+        }
+
+        $this->logger->error(
+            $message,
+            array_merge(
+                ['transaction_id' => $transactionId],
+                $contextData
+            )
+        );
+    }
+
+    /**
+     * Determines whether debugging is enabled.
+     */
+    private function isDebugEnabled(): bool
+    {
+        return $this->config->getBool('enableDebugging', null);
     }
 }

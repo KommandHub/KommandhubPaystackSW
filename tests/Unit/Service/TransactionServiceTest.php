@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Tests\Unit\Service;
 
-use Kommandhub\Paystack\Paystack;
-use Kommandhub\Paystack\Resources\Transaction;
+use Kommandhub\PaystackSW\Service\Paystack;
+use Kommandhub\PaystackSW\Service\Resources\Transaction;
 use Kommandhub\PaystackSW\Service\TransactionService;
 use PHPUnit\Framework\TestCase;
 
