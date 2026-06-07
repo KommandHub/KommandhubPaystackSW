@@ -84,6 +84,22 @@
             </helpText>
         </input-field>
 
+        <input-field type="text">
+            <name>splitCode</name>
+            <label>Split Code</label>
+            <label lang="de-DE">Split-Code</label>
+            <label lang="fr-FR">Code de répartition</label>
+            <helpText>
+                The code for the split group that should receive a split of the payment (e.g., SPL_xxxxxxxxx). If both Subaccount Code and Split Code are provided, Split Code will take precedence.
+            </helpText>
+            <helpText lang="de-DE">
+                Der Code für die Split-Gruppe, die eine Aufteilung der Zahlung erhalten soll (z. B. SPL_xxxxxxxxx). Wenn sowohl der Unterkonto-Code als auch der Split-Code angegeben sind, hat der Split-Code Vorrang.
+            </helpText>
+            <helpText lang="fr-FR">
+                Le code du groupe de répartition qui doit recevoir une partie du paiement (ex: SPL_xxxxxxxxx). Si le code du sous-compte et le code de répartition sont tous deux fournis, le code de répartition sera prioritaire.
+            </helpText>
+        </input-field>
+
         <input-field type="int">
             <name>splitPaymentTransactionCharge</name>
             <label>Split Payment Transaction Charge</label>

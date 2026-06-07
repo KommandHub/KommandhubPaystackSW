@@ -18,7 +18,7 @@ use Kommandhub\PaystackSW\Service\Resources\Settlement;
 use Kommandhub\PaystackSW\Service\Resources\Subaccount;
 
 /**
- * Class Paystack
+ * Class Paystack.
  */
 class Paystack
 {

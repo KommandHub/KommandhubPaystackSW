@@ -57,7 +57,7 @@ readonly class PayloadBuilder
             throw new \RuntimeException('Return URL is missing in the payment transaction struct.');
         }
 
-        // 5. Fetch sales channel specific configuration for payment options.
+        // 5. Fetch sales channel-specific configuration for payment options.
         $salesChannelId = $order->getSalesChannelId();
 
         $paymentOptions = $this->config->get(
@@ -65,6 +65,7 @@ readonly class PayloadBuilder
             salesChannelId: $salesChannelId
         );
 
+        /** @var array $selectedMetaData */
         $selectedMetaData = $this->config->get(
             key: 'metaData',
             default: [],
@@ -74,7 +75,7 @@ readonly class PayloadBuilder
         // 6. Build the final payload array according to Paystack API specifications.
         // The amount is multiplied by 100 to convert from the major currency unit (e.g., Naira)
         // to the minor unit (e.g., kobo) as expected by Paystack.
-        return [
+        $payload = [
             'amount' => (int)round($orderTransaction->getAmount()->getTotalPrice() * 100),
             'currency' => $currency->getIsoCode(),
             'email' => $customer->getEmail(),
@@ -82,6 +83,36 @@ readonly class PayloadBuilder
             'channels' => $paymentOptions,
             'metadata' => $this->buildMetadata($order, $selectedMetaData, (string)$returnUrl),
         ];
+
+        // 7. Add split payment parameters if enabled.
+        $enableSplitPayment = $this->config->getBool('enableSplitPayment', $salesChannelId);
+
+        if ($enableSplitPayment) {
+            $subaccountCode = $this->config->getString('subaccountCode', $salesChannelId);
+            $splitCode = $this->config->getString('splitCode', $salesChannelId);
+
+            if ($splitCode !== '') {
+                $payload['split_code'] = $splitCode;
+            } elseif ($subaccountCode !== '') {
+                $payload['subaccount'] = $subaccountCode;
+            }
+
+            if (isset($payload['split_code']) || isset($payload['subaccount'])) {
+                $transactionCharge = $this->config->get('splitPaymentTransactionCharge', null, $salesChannelId);
+
+                if ($transactionCharge !== null && (int)$transactionCharge > 0) {
+                    $payload['transaction_charge'] = (int)$transactionCharge * 100;
+                }
+
+                $bearer = $this->config->getString('paystackChargesBearer', $salesChannelId);
+
+                if ($bearer !== '') {
+                    $payload['bearer'] = $bearer;
+                }
+            }
+        }
+
+        return $payload;
     }
 
     /**
@@ -117,6 +148,7 @@ readonly class PayloadBuilder
                     break;
                 case 'customerName':
                     $customer = $order->getOrderCustomer();
+
                     if ($customer) {
                         $metadata['custom_fields'][] = [
                             'display_name' => 'Customer Name',
@@ -127,6 +159,7 @@ readonly class PayloadBuilder
                     break;
                 case 'customerEmail':
                     $customer = $order->getOrderCustomer();
+
                     if ($customer) {
                         $metadata['custom_fields'][] = [
                             'display_name' => 'Customer Email',
@@ -137,6 +170,7 @@ readonly class PayloadBuilder
                     break;
                 case 'customerPhone':
                     $billing = $order->getBillingAddress();
+
                     if ($billing && $billing->getPhoneNumber()) {
                         $metadata['custom_fields'][] = [
                             'display_name' => 'Customer Phone',
@@ -147,6 +181,7 @@ readonly class PayloadBuilder
                     break;
                 case 'billingAddress':
                     $billing = $order->getBillingAddress();
+
                     if ($billing) {
                         $metadata['custom_fields'][] = [
                             'display_name' => 'Order Billing Address',
@@ -158,9 +193,11 @@ readonly class PayloadBuilder
                 case 'shippingAddress':
                     $shipping = null;
                     $deliveries = $order->getDeliveries();
+
                     if ($deliveries && $deliveries->first()) {
                         $shipping = $deliveries->first()->getShippingOrderAddress();
                     }
+
                     if ($shipping) {
                         $metadata['custom_fields'][] = [
                             'display_name' => 'Order Shipping Address',
@@ -171,6 +208,7 @@ readonly class PayloadBuilder
                     break;
                 case 'products':
                     $lineItems = $order->getLineItems();
+
                     if ($lineItems && $lineItems->count() > 0) {
                         $metadata['custom_fields'][] = [
                             'display_name' => 'Product(s) Purchased',
@@ -219,6 +257,7 @@ readonly class PayloadBuilder
     private function formatLineItems(OrderLineItemCollection $lineItems): string
     {
         $items = [];
+
         foreach ($lineItems as $lineItem) {
             $items[] = sprintf('%dx %s', $lineItem->getQuantity(), $lineItem->getLabel());
         }

@@ -11,7 +11,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface as SymfonyHttpClientInterfa
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Class PaystackHttpClient
+ * Class PaystackHttpClient.
  */
 class PaystackHttpClient implements HttpClientInterface
 {
@@ -47,10 +47,10 @@ class PaystackHttpClient implements HttpClientInterface
     public function get(string $endpoint, array $queryParams = [], ?string $salesChannelId = null): ResponseInterface
     {
         try {
-            return $this->client->request('GET', self::BASE_URL.$endpoint, [
+            return $this->client->request('GET', self::BASE_URL . $endpoint, [
                 'query' => $queryParams,
                 'headers' => [
-                    'Authorization' => 'Bearer '.$this->getSecretKey($salesChannelId),
+                    'Authorization' => 'Bearer ' . $this->getSecretKey($salesChannelId),
                     'Content-Type' => 'application/json',
                 ],
             ]);
@@ -68,10 +68,10 @@ class PaystackHttpClient implements HttpClientInterface
     public function post(string $endpoint, array $payload = [], ?string $salesChannelId = null): ResponseInterface
     {
         try {
-            return $this->client->request('POST', self::BASE_URL.$endpoint, [
+            return $this->client->request('POST', self::BASE_URL . $endpoint, [
                 'json' => $payload,
                 'headers' => [
-                    'Authorization' => 'Bearer '.$this->getSecretKey($salesChannelId),
+                    'Authorization' => 'Bearer ' . $this->getSecretKey($salesChannelId),
                     'Content-Type' => 'application/json',
                 ],
             ]);
@@ -89,10 +89,10 @@ class PaystackHttpClient implements HttpClientInterface
     public function put(string $endpoint, array $payload = [], ?string $salesChannelId = null): ResponseInterface
     {
         try {
-            return $this->client->request('PUT', self::BASE_URL.$endpoint, [
+            return $this->client->request('PUT', self::BASE_URL . $endpoint, [
                 'json' => $payload,
                 'headers' => [
-                    'Authorization' => 'Bearer '.$this->getSecretKey($salesChannelId),
+                    'Authorization' => 'Bearer ' . $this->getSecretKey($salesChannelId),
                     'Content-Type' => 'application/json',
                 ],
             ]);
@@ -110,9 +110,9 @@ class PaystackHttpClient implements HttpClientInterface
     public function delete(string $endpoint, ?string $salesChannelId = null): ResponseInterface
     {
         try {
-            return $this->client->request('DELETE', self::BASE_URL.$endpoint, [
+            return $this->client->request('DELETE', self::BASE_URL . $endpoint, [
                 'headers' => [
-                    'Authorization' => 'Bearer '.$this->getSecretKey($salesChannelId),
+                    'Authorization' => 'Bearer ' . $this->getSecretKey($salesChannelId),
                     'Content-Type' => 'application/json',
                 ],
             ]);

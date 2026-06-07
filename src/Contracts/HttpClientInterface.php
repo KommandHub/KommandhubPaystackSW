@@ -8,7 +8,7 @@ use Kommandhub\PaystackSW\Exceptions\PaystackException;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Interface HttpClientInterface
+ * Interface HttpClientInterface.
  */
 interface HttpClientInterface
 {

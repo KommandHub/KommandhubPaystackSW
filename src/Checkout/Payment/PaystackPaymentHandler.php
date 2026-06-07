@@ -168,6 +168,7 @@ final class PaystackPaymentHandler extends AbstractPaystackPaymentHandler
 
         $data = $verification['data'] ?? [];
         $paystackTransactionId = null;
+
         if (is_array($data) && isset($data['id'])) {
             $paystackTransactionId = $data['id'];
         }

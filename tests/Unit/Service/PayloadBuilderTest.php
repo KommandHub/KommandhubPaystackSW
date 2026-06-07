@@ -216,4 +216,96 @@ class PayloadBuilderTest extends TestCase
 
         $this->assertEquals($expectedMetadata, $payload['metadata']);
     }
+
+    public function testBuildWithSplitPayment(): void
+    {
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction = $this->createMock(PaymentTransactionStruct::class);
+        $order = $this->createMock(OrderEntity::class);
+        $customer = $this->createMock(OrderCustomerEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $amount = $this->createMock(CalculatedPrice::class);
+
+        $orderTransaction->method('getOrder')->willReturn($order);
+        $orderTransaction->method('getAmount')->willReturn($amount);
+        $amount->method('getTotalPrice')->willReturn(100.00);
+
+        $order->method('getOrderCustomer')->willReturn($customer);
+        $order->method('getCurrency')->willReturn($currency);
+        $order->method('getSalesChannelId')->willReturn('sales-channel-id');
+
+        $customer->method('getEmail')->willReturn('test@example.com');
+        $currency->method('getIsoCode')->willReturn('NGN');
+
+        $transaction->method('getReturnUrl')->willReturn('https://return.url');
+
+        $this->config->method('get')->willReturnMap([
+            ['paymentOptions', null, 'sales-channel-id', ['card']],
+            ['metaData', [], 'sales-channel-id', []],
+            ['splitPaymentTransactionCharge', null, 'sales-channel-id', 50],
+        ]);
+
+        $this->config->method('getBool')->willReturnMap([
+            ['enableSplitPayment', 'sales-channel-id', true],
+        ]);
+
+        $this->config->method('getString')->willReturnMap([
+            ['subaccountCode', 'sales-channel-id', 'ACCT_12345'],
+            ['splitCode', 'sales-channel-id', ''],
+            ['paystackChargesBearer', 'sales-channel-id', 'subaccount'],
+        ]);
+
+        $payload = $this->payloadBuilder->build($orderTransaction, $transaction);
+
+        $this->assertEquals('ACCT_12345', $payload['subaccount']);
+        $this->assertEquals(5000, $payload['transaction_charge']);
+        $this->assertEquals('subaccount', $payload['bearer']);
+        $this->assertArrayNotHasKey('split_code', $payload);
+    }
+
+    public function testBuildWithSplitGroup(): void
+    {
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction = $this->createMock(PaymentTransactionStruct::class);
+        $order = $this->createMock(OrderEntity::class);
+        $customer = $this->createMock(OrderCustomerEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $amount = $this->createMock(CalculatedPrice::class);
+
+        $orderTransaction->method('getOrder')->willReturn($order);
+        $orderTransaction->method('getAmount')->willReturn($amount);
+        $amount->method('getTotalPrice')->willReturn(100.00);
+
+        $order->method('getOrderCustomer')->willReturn($customer);
+        $order->method('getCurrency')->willReturn($currency);
+        $order->method('getSalesChannelId')->willReturn('sales-channel-id');
+
+        $customer->method('getEmail')->willReturn('test@example.com');
+        $currency->method('getIsoCode')->willReturn('NGN');
+
+        $transaction->method('getReturnUrl')->willReturn('https://return.url');
+
+        $this->config->method('get')->willReturnMap([
+            ['paymentOptions', null, 'sales-channel-id', ['card']],
+            ['metaData', [], 'sales-channel-id', []],
+            ['splitPaymentTransactionCharge', null, 'sales-channel-id', 100],
+        ]);
+
+        $this->config->method('getBool')->willReturnMap([
+            ['enableSplitPayment', 'sales-channel-id', true],
+        ]);
+
+        $this->config->method('getString')->willReturnMap([
+            ['subaccountCode', 'sales-channel-id', ''],
+            ['splitCode', 'sales-channel-id', 'SPL_67890'],
+            ['paystackChargesBearer', 'sales-channel-id', 'account'],
+        ]);
+
+        $payload = $this->payloadBuilder->build($orderTransaction, $transaction);
+
+        $this->assertEquals('SPL_67890', $payload['split_code']);
+        $this->assertEquals(10000, $payload['transaction_charge']);
+        $this->assertEquals('account', $payload['bearer']);
+        $this->assertArrayNotHasKey('subaccount', $payload);
+    }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Service\Resources;
 
 use Kommandhub\PaystackSW\Exceptions\PaystackException;
-use Kommandhub\PaystackSW\Service\Resources\ApiResource;
 
 /**
  * Class Customer

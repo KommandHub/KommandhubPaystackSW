@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Service\Resources;
 
 use Kommandhub\PaystackSW\Contracts\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
  * Class ApiResource
@@ -21,7 +22,7 @@ abstract class ApiResource
     /**
      * Parse the response from the API.
      */
-    protected function response(mixed $response): array
+    protected function response(ResponseInterface $response): array
     {
         return $response->toArray();
     }
