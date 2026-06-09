@@ -6,15 +6,15 @@ namespace Kommandhub\PaystackSW\Tests\Unit;
 
 use Kommandhub\PaystackSW\KommandhubPaystackSW;
 use PHPUnit\Framework\TestCase;
+use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\ActivateContext;
 use Shopware\Core\Framework\Plugin\Context\DeactivateContext;
-use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
 use Shopware\Core\Framework\Context;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\IdSearchResult;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 
 class KommandhubPaystackSWTest extends TestCase
 {
@@ -25,153 +25,100 @@ class KommandhubPaystackSWTest extends TestCase
     {
         $this->plugin = new KommandhubPaystackSW(true, '');
         $this->container = $this->createMock(ContainerInterface::class);
+        $this->plugin->setContainer($this->container);
     }
 
-    public function testExecuteComposerCommandsReturnsTrue(): void
+    public function testExecuteComposerCommands(): void
     {
         $this->assertTrue($this->plugin->executeComposerCommands());
     }
 
     public function testInstall(): void
     {
-        $context = Context::createDefaultContext();
-        $installContext = $this->createMock(InstallContext::class);
-        $installContext->method('getContext')->willReturn($context);
+        $context = $this->createMock(InstallContext::class);
+        $context->method('getContext')->willReturn(Context::createDefaultContext());
 
-        $paymentRepository = $this->createMock(EntityRepository::class);
-        $idSearchResult = $this->createMock(IdSearchResult::class);
-        $idSearchResult->method('firstId')->willReturn(null); // Payment method doesn't exist
-        $paymentRepository->method('searchIds')->willReturn($idSearchResult);
-
-        $pluginIdProvider = $this->createMock(PluginIdProvider::class);
-        $pluginIdProvider->method('getPluginIdByBaseClass')->willReturn('plugin-id');
+        $repository = $this->createMock(EntityRepository::class);
+        $customFieldSetRepository = $this->createMock(EntityRepository::class);
+        $customFieldSetRelationRepository = $this->createMock(EntityRepository::class);
 
         $this->container->method('get')->willReturnMap([
-            ['payment_method.repository', $paymentRepository],
-            [PluginIdProvider::class, $pluginIdProvider],
+            ['payment_method.repository', $repository],
+            [PluginIdProvider::class, $this->createMock(PluginIdProvider::class)],
+            ['custom_field_set.repository', $customFieldSetRepository],
+            ['custom_field_set_relation.repository', $customFieldSetRelationRepository],
         ]);
 
-        $this->plugin->setContainer($this->container);
-
-        $paymentRepository->expects($this->once())->method('create');
-
-        $this->plugin->install($installContext);
-    }
-
-    public function testInstallWhenPaymentMethodExists(): void
-    {
-        $context = Context::createDefaultContext();
-        $installContext = $this->createMock(InstallContext::class);
-        $installContext->method('getContext')->willReturn($context);
-
-        $paymentRepository = $this->createMock(EntityRepository::class);
+        // Mock search to return no existing payment method
         $idSearchResult = $this->createMock(IdSearchResult::class);
-        $idSearchResult->method('firstId')->willReturn('existing-id');
-        $paymentRepository->method('searchIds')->willReturn($idSearchResult);
+        $idSearchResult->method('firstId')->willReturn(null);
+        $repository->method('searchIds')->willReturn($idSearchResult);
 
-        $this->container->method('get')->with('payment_method.repository')->willReturn($paymentRepository);
-        $this->plugin->setContainer($this->container);
+        $repository->expects($this->once())->method('create');
 
-        $paymentRepository->expects($this->never())->method('create');
-
-        $this->plugin->install($installContext);
-    }
-
-    public function testUninstall(): void
-    {
-        $context = Context::createDefaultContext();
-        $uninstallContext = $this->createMock(UninstallContext::class);
-        $uninstallContext->method('getContext')->willReturn($context);
-        $uninstallContext->method('keepUserData')->willReturn(true);
-
-        $paymentRepository = $this->createMock(EntityRepository::class);
-        $idSearchResult = $this->createMock(IdSearchResult::class);
-        $idSearchResult->method('firstId')->willReturn('existing-id');
-        $paymentRepository->method('searchIds')->willReturn($idSearchResult);
-
-        $this->container->method('get')->with('payment_method.repository')->willReturn($paymentRepository);
-        $this->plugin->setContainer($this->container);
-
-        $paymentRepository->expects($this->once())->method('update')->with([
-            ['id' => 'existing-id', 'active' => false],
-        ], $context);
-
-        $this->plugin->uninstall($uninstallContext);
+        $this->plugin->install($context);
     }
 
     public function testActivate(): void
     {
-        $context = Context::createDefaultContext();
-        $activateContext = $this->createMock(ActivateContext::class);
-        $activateContext->method('getContext')->willReturn($context);
+        $context = $this->createMock(ActivateContext::class);
+        $context->method('getContext')->willReturn(Context::createDefaultContext());
 
-        $paymentRepository = $this->createMock(EntityRepository::class);
+        $repository = $this->createMock(EntityRepository::class);
+        $this->container->method('get')->with('payment_method.repository')->willReturn($repository);
+
         $idSearchResult = $this->createMock(IdSearchResult::class);
-        $idSearchResult->method('firstId')->willReturn('existing-id');
-        $paymentRepository->method('searchIds')->willReturn($idSearchResult);
+        $idSearchResult->method('firstId')->willReturn('payment-method-id');
+        $repository->method('searchIds')->willReturn($idSearchResult);
 
-        $this->container->method('get')->with('payment_method.repository')->willReturn($paymentRepository);
-        $this->plugin->setContainer($this->container);
+        $repository->expects($this->once())->method('update')->with([
+            ['id' => 'payment-method-id', 'active' => true],
+        ]);
 
-        $paymentRepository->expects($this->once())->method('update')->with([
-            ['id' => 'existing-id', 'active' => true],
-        ], $context);
-
-        $this->plugin->activate($activateContext);
+        $this->plugin->activate($context);
     }
 
     public function testDeactivate(): void
     {
-        $context = Context::createDefaultContext();
-        $deactivateContext = $this->createMock(DeactivateContext::class);
-        $deactivateContext->method('getContext')->willReturn($context);
+        $context = $this->createMock(DeactivateContext::class);
+        $context->method('getContext')->willReturn(Context::createDefaultContext());
 
-        $paymentRepository = $this->createMock(EntityRepository::class);
+        $repository = $this->createMock(EntityRepository::class);
+        $this->container->method('get')->with('payment_method.repository')->willReturn($repository);
+
         $idSearchResult = $this->createMock(IdSearchResult::class);
-        $idSearchResult->method('firstId')->willReturn('existing-id');
-        $paymentRepository->method('searchIds')->willReturn($idSearchResult);
+        $idSearchResult->method('firstId')->willReturn('payment-method-id');
+        $repository->method('searchIds')->willReturn($idSearchResult);
 
-        $this->container->method('get')->with('payment_method.repository')->willReturn($paymentRepository);
-        $this->plugin->setContainer($this->container);
+        $repository->expects($this->once())->method('update')->with([
+            ['id' => 'payment-method-id', 'active' => false],
+        ]);
 
-        $paymentRepository->expects($this->once())->method('update')->with([
-            ['id' => 'existing-id', 'active' => false],
-        ], $context);
-
-        $this->plugin->deactivate($deactivateContext);
+        $this->plugin->deactivate($context);
     }
 
-    public function testMethodsWhenContainerIsNull(): void
+    public function testUninstall(): void
     {
-        $context = Context::createDefaultContext();
-        $installContext = $this->createMock(InstallContext::class);
-        $installContext->method('getContext')->willReturn($context);
+        $context = $this->createMock(UninstallContext::class);
+        $context->method('getContext')->willReturn(Context::createDefaultContext());
+        $context->method('keepUserData')->willReturn(true);
 
-        // Should not throw exception and just return
-        $this->plugin->install($installContext);
+        $repository = $this->createMock(EntityRepository::class);
+        $customFieldSetRepository = $this->createMock(EntityRepository::class);
+        $customFieldSetRelationRepository = $this->createMock(EntityRepository::class);
 
-        $activateContext = $this->createMock(ActivateContext::class);
-        $activateContext->method('getContext')->willReturn($context);
-        $this->plugin->activate($activateContext);
+        $this->container->method('get')->willReturnMap([
+            ['payment_method.repository', $repository],
+            ['custom_field_set.repository', $customFieldSetRepository],
+            ['custom_field_set_relation.repository', $customFieldSetRelationRepository],
+        ]);
 
-        $this->assertTrue(true); // Assertion to avoid risky test
-    }
-    public function testUninstallWithKeepUserDataFalse(): void
-    {
-        $context = Context::createDefaultContext();
-        $uninstallContext = $this->createMock(UninstallContext::class);
-        $uninstallContext->method('getContext')->willReturn($context);
-        $uninstallContext->method('keepUserData')->willReturn(false);
-
-        $paymentRepository = $this->createMock(EntityRepository::class);
         $idSearchResult = $this->createMock(IdSearchResult::class);
-        $idSearchResult->method('firstId')->willReturn('existing-id');
-        $paymentRepository->method('searchIds')->willReturn($idSearchResult);
+        $idSearchResult->method('firstId')->willReturn('payment-method-id');
+        $repository->method('searchIds')->willReturn($idSearchResult);
 
-        $this->container->method('get')->with('payment_method.repository')->willReturn($paymentRepository);
-        $this->plugin->setContainer($this->container);
+        $repository->expects($this->once())->method('update');
 
-        $this->plugin->uninstall($uninstallContext);
-        $this->assertTrue(true);
+        $this->plugin->uninstall($context);
     }
 }

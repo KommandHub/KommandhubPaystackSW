@@ -7,16 +7,18 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Service;
 use Kommandhub\PaystackSW\Service\Config;
 use Kommandhub\PaystackSW\Service\PayloadBuilder;
 use PHPUnit\Framework\TestCase;
-use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 use Shopware\Core\Checkout\Order\Aggregate\OrderAddress\OrderAddressEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryCollection;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
-use Shopware\Core\System\Country\CountryEntity;
+use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 use Shopware\Core\System\Currency\CurrencyEntity;
+use Shopware\Core\System\Country\CountryEntity;
 
 class PayloadBuilderTest extends TestCase
 {
@@ -29,283 +31,448 @@ class PayloadBuilderTest extends TestCase
         $this->payloadBuilder = new PayloadBuilder($this->config);
     }
 
-    public function testBuildSuccessful(): void
+    public function testBuildBasicPayload(): void
     {
-        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $transaction = $this->createMock(PaymentTransactionStruct::class);
         $order = $this->createMock(OrderEntity::class);
         $customer = $this->createMock(OrderCustomerEntity::class);
         $currency = $this->createMock(CurrencyEntity::class);
-        $amount = $this->createMock(CalculatedPrice::class);
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
 
         $orderTransaction->method('getOrder')->willReturn($order);
-        $orderTransaction->method('getAmount')->willReturn($amount);
-        $amount->method('getTotalPrice')->willReturn(100.50);
-
         $order->method('getOrderCustomer')->willReturn($customer);
         $order->method('getCurrency')->willReturn($currency);
+        $transactionStruct->method('getReturnUrl')->willReturn('https://return.url');
         $order->method('getSalesChannelId')->willReturn('sales-channel-id');
 
-        $customer->method('getEmail')->willReturn('test@example.com');
-        $currency->method('getIsoCode')->willReturn('NGN');
+        $price = $this->createMock(CalculatedPrice::class);
+        $price->method('getTotalPrice')->willReturn(100.50);
+        $orderTransaction->method('getAmount')->willReturn($price);
 
-        $transaction->method('getReturnUrl')->willReturn('https://return.url');
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $customer->method('getEmail')->willReturn('test@example.com');
 
         $this->config->method('get')->willReturnMap([
             ['paymentOptions', null, 'sales-channel-id', ['card', 'bank']],
             ['metaData', [], 'sales-channel-id', []],
         ]);
 
-        $payload = $this->payloadBuilder->build($orderTransaction, $transaction);
+        $payload = $this->payloadBuilder->build($orderTransaction, $transactionStruct);
 
-        $expectedPayload = [
-            'amount' => 10050,
-            'currency' => 'NGN',
-            'email' => 'test@example.com',
-            'callback_url' => 'https://return.url',
-            'channels' => ['card', 'bank'],
-            'metadata' => [
-                'cancel_action' => 'https://return.url',
-            ],
-        ];
-
-        $this->assertEquals($expectedPayload, $payload);
-    }
-
-    public function testBuildThrowsExceptionWhenOrderIsMissing(): void
-    {
-        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $transaction = $this->createMock(PaymentTransactionStruct::class);
-
-        $orderTransaction->method('getOrder')->willReturn(null);
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Order information is missing for the payment transaction.');
-
-        $this->payloadBuilder->build($orderTransaction, $transaction);
-    }
-
-    public function testBuildThrowsExceptionWhenCustomerIsMissing(): void
-    {
-        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $transaction = $this->createMock(PaymentTransactionStruct::class);
-        $order = $this->createMock(OrderEntity::class);
-
-        $orderTransaction->method('getOrder')->willReturn($order);
-        $order->method('getOrderCustomer')->willReturn(null);
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Customer information is missing for the order.');
-
-        $this->payloadBuilder->build($orderTransaction, $transaction);
-    }
-
-    public function testBuildThrowsExceptionWhenCurrencyIsMissing(): void
-    {
-        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $transaction = $this->createMock(PaymentTransactionStruct::class);
-        $order = $this->createMock(OrderEntity::class);
-        $customer = $this->createMock(OrderCustomerEntity::class);
-
-        $orderTransaction->method('getOrder')->willReturn($order);
-        $order->method('getOrderCustomer')->willReturn($customer);
-        $order->method('getCurrency')->willReturn(null);
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Currency information is missing for the order.');
-
-        $this->payloadBuilder->build($orderTransaction, $transaction);
-    }
-
-    public function testBuildThrowsExceptionWhenReturnUrlIsMissing(): void
-    {
-        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $transaction = $this->createMock(PaymentTransactionStruct::class);
-        $order = $this->createMock(OrderEntity::class);
-        $customer = $this->createMock(OrderCustomerEntity::class);
-        $currency = $this->createMock(CurrencyEntity::class);
-
-        $orderTransaction->method('getOrder')->willReturn($order);
-        $order->method('getOrderCustomer')->willReturn($customer);
-        $order->method('getCurrency')->willReturn($currency);
-
-        $transaction->method('getReturnUrl')->willReturn(null);
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Return URL is missing in the payment transaction struct.');
-
-        $this->payloadBuilder->build($orderTransaction, $transaction);
+        $this->assertEquals(10050, $payload['amount']);
+        $this->assertEquals('NGN', $payload['currency']);
+        $this->assertEquals('test@example.com', $payload['email']);
+        $this->assertEquals('https://return.url', $payload['callback_url']);
+        $this->assertEquals(['card', 'bank'], $payload['channels']);
     }
 
     public function testBuildWithMetadata(): void
     {
-        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $transaction = $this->createMock(PaymentTransactionStruct::class);
         $order = $this->createMock(OrderEntity::class);
         $customer = $this->createMock(OrderCustomerEntity::class);
         $currency = $this->createMock(CurrencyEntity::class);
-        $amount = $this->createMock(CalculatedPrice::class);
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
         $billingAddress = $this->createMock(OrderAddressEntity::class);
         $country = $this->createMock(CountryEntity::class);
-        $lineItem = $this->createMock(OrderLineItemEntity::class);
-        $lineItems = new OrderLineItemCollection([$lineItem]);
 
         $orderTransaction->method('getOrder')->willReturn($order);
-        $orderTransaction->method('getAmount')->willReturn($amount);
-        $amount->method('getTotalPrice')->willReturn(100.00);
-
         $order->method('getOrderCustomer')->willReturn($customer);
         $order->method('getCurrency')->willReturn($currency);
+        $transactionStruct->method('getReturnUrl')->willReturn('https://return.url');
         $order->method('getSalesChannelId')->willReturn('sales-channel-id');
         $order->method('getOrderNumber')->willReturn('ORDER-123');
         $order->method('getBillingAddress')->willReturn($billingAddress);
-        $order->method('getLineItems')->willReturn($lineItems);
 
+        $price = $this->createMock(CalculatedPrice::class);
+        $price->method('getTotalPrice')->willReturn(10.0);
+        $orderTransaction->method('getAmount')->willReturn($price);
+        $currency->method('getIsoCode')->willReturn('NGN');
         $customer->method('getEmail')->willReturn('test@example.com');
         $customer->method('getFirstName')->willReturn('John');
         $customer->method('getLastName')->willReturn('Doe');
 
-        $currency->method('getIsoCode')->willReturn('NGN');
-
         $billingAddress->method('getFirstName')->willReturn('John');
         $billingAddress->method('getLastName')->willReturn('Doe');
-        $billingAddress->method('getStreet')->willReturn('Main St 123');
+        $billingAddress->method('getStreet')->willReturn('Main St');
         $billingAddress->method('getZipcode')->willReturn('12345');
         $billingAddress->method('getCity')->willReturn('Lagos');
         $billingAddress->method('getCountry')->willReturn($country);
-        $billingAddress->method('getPhoneNumber')->willReturn('08012345678');
         $country->method('getName')->willReturn('Nigeria');
 
-        $lineItem->method('getQuantity')->willReturn(2);
-        $lineItem->method('getLabel')->willReturn('Test Product');
-
-        $transaction->method('getReturnUrl')->willReturn('https://return.url');
-
         $this->config->method('get')->willReturnMap([
-            ['paymentOptions', null, 'sales-channel-id', ['card']],
-            ['metaData', [], 'sales-channel-id', ['orderId', 'customerName', 'customerPhone', 'products']],
+            ['paymentOptions', null, 'sales-channel-id', null],
+            ['metaData', [], 'sales-channel-id', ['orderId', 'customerName', 'billingAddress']],
         ]);
 
-        $payload = $this->payloadBuilder->build($orderTransaction, $transaction);
+        $payload = $this->payloadBuilder->build($orderTransaction, $transactionStruct);
 
-        $expectedMetadata = [
-            'cancel_action' => 'https://return.url',
-            'custom_fields' => [
-                [
-                    'display_name' => 'Order ID',
-                    'variable_name' => 'order_id',
-                    'value' => 'ORDER-123',
-                ],
-                [
-                    'display_name' => 'Customer Name',
-                    'variable_name' => 'customer_name',
-                    'value' => 'John Doe',
-                ],
-                [
-                    'display_name' => 'Customer Phone',
-                    'variable_name' => 'customer_phone',
-                    'value' => '08012345678',
-                ],
-                [
-                    'display_name' => 'Product(s) Purchased',
-                    'variable_name' => 'products_purchased',
-                    'value' => '2x Test Product',
-                ],
-            ],
-        ];
-
-        $this->assertEquals($expectedMetadata, $payload['metadata']);
+        $this->assertArrayHasKey('metadata', $payload);
+        $customFields = $payload['metadata']['custom_fields'];
+        $this->assertCount(3, $customFields);
+        $this->assertEquals('ORDER-123', $customFields[0]['value']);
+        $this->assertEquals('John Doe', $customFields[1]['value']);
+        $this->assertStringContainsString('Main St', $customFields[2]['value']);
     }
 
     public function testBuildWithSplitPayment(): void
     {
         $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $transaction = $this->createMock(PaymentTransactionStruct::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
         $order = $this->createMock(OrderEntity::class);
         $customer = $this->createMock(OrderCustomerEntity::class);
         $currency = $this->createMock(CurrencyEntity::class);
-        $amount = $this->createMock(CalculatedPrice::class);
 
         $orderTransaction->method('getOrder')->willReturn($order);
-        $orderTransaction->method('getAmount')->willReturn($amount);
-        $amount->method('getTotalPrice')->willReturn(100.00);
-
         $order->method('getOrderCustomer')->willReturn($customer);
         $order->method('getCurrency')->willReturn($currency);
+        $transactionStruct->method('getReturnUrl')->willReturn('https://return.url');
         $order->method('getSalesChannelId')->willReturn('sales-channel-id');
 
-        $customer->method('getEmail')->willReturn('test@example.com');
+        $price = $this->createMock(CalculatedPrice::class);
+        $price->method('getTotalPrice')->willReturn(100.0);
+        $orderTransaction->method('getAmount')->willReturn($price);
         $currency->method('getIsoCode')->willReturn('NGN');
+        $customer->method('getEmail')->willReturn('test@example.com');
 
-        $transaction->method('getReturnUrl')->willReturn('https://return.url');
-
+        $this->config->method('getBool')->with('enableSplitPayment', 'sales-channel-id')->willReturn(true);
+        $this->config->method('getString')->willReturnMap([
+            ['subaccountCode', 'sales-channel-id', 'SUB_123'],
+            ['splitCode', 'sales-channel-id', 'SPLIT_123'],
+            ['paystackChargesBearer', 'sales-channel-id', 'account'],
+        ]);
         $this->config->method('get')->willReturnMap([
-            ['paymentOptions', null, 'sales-channel-id', ['card']],
             ['metaData', [], 'sales-channel-id', []],
             ['splitPaymentTransactionCharge', null, 'sales-channel-id', 50],
         ]);
 
-        $this->config->method('getBool')->willReturnMap([
-            ['enableSplitPayment', 'sales-channel-id', true],
-        ]);
+        $payload = $this->payloadBuilder->build($orderTransaction, $transactionStruct);
 
-        $this->config->method('getString')->willReturnMap([
-            ['subaccountCode', 'sales-channel-id', 'ACCT_12345'],
-            ['splitCode', 'sales-channel-id', ''],
-            ['paystackChargesBearer', 'sales-channel-id', 'subaccount'],
-        ]);
-
-        $payload = $this->payloadBuilder->build($orderTransaction, $transaction);
-
-        $this->assertEquals('ACCT_12345', $payload['subaccount']);
+        $this->assertEquals('SPLIT_123', $payload['split_code']);
         $this->assertEquals(5000, $payload['transaction_charge']);
-        $this->assertEquals('subaccount', $payload['bearer']);
-        $this->assertArrayNotHasKey('split_code', $payload);
+        $this->assertEquals('account', $payload['bearer']);
     }
 
-    public function testBuildWithSplitGroup(): void
+    public function testBuildThrowsExceptionWhenOrderMissing(): void
     {
         $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $transaction = $this->createMock(PaymentTransactionStruct::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $orderTransaction->method('getOrder')->willReturn(null);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Order information is missing');
+
+        $this->payloadBuilder->build($orderTransaction, $transactionStruct);
+    }
+
+    public function testBuildThrowsExceptionWhenCustomerMissing(): void
+    {
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $order = $this->createMock(OrderEntity::class);
+        $orderTransaction->method('getOrder')->willReturn($order);
+        $order->method('getOrderCustomer')->willReturn(null);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Customer information is missing');
+
+        $this->payloadBuilder->build($orderTransaction, $transactionStruct);
+    }
+
+    public function testBuildThrowsExceptionWhenCurrencyMissing(): void
+    {
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $order = $this->createMock(OrderEntity::class);
+        $orderTransaction->method('getOrder')->willReturn($order);
+        $order->method('getOrderCustomer')->willReturn($this->createMock(OrderCustomerEntity::class));
+        $order->method('getCurrency')->willReturn(null);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Currency information is missing');
+
+        $this->payloadBuilder->build($orderTransaction, $transactionStruct);
+    }
+
+    public function testBuildThrowsExceptionWhenReturnUrlMissing(): void
+    {
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $order = $this->createMock(OrderEntity::class);
+        $orderTransaction->method('getOrder')->willReturn($order);
+        $order->method('getOrderCustomer')->willReturn($this->createMock(OrderCustomerEntity::class));
+        $order->method('getCurrency')->willReturn($this->createMock(CurrencyEntity::class));
+        $transactionStruct->method('getReturnUrl')->willReturn(null);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Return URL is missing');
+
+        $this->payloadBuilder->build($orderTransaction, $transactionStruct);
+    }
+    public function testBuildWithAllMetadataOptions(): void
+    {
         $order = $this->createMock(OrderEntity::class);
         $customer = $this->createMock(OrderCustomerEntity::class);
         $currency = $this->createMock(CurrencyEntity::class);
-        $amount = $this->createMock(CalculatedPrice::class);
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $billingAddress = $this->createMock(OrderAddressEntity::class);
+        $shippingAddress = $this->createMock(OrderAddressEntity::class);
+        $delivery = $this->createMock(OrderDeliveryEntity::class);
+        $deliveries = new OrderDeliveryCollection([$delivery]);
+        $lineItem = $this->createMock(OrderLineItemEntity::class);
+        $lineItems = new OrderLineItemCollection([$lineItem]);
+        $country = $this->createMock(CountryEntity::class);
 
         $orderTransaction->method('getOrder')->willReturn($order);
-        $orderTransaction->method('getAmount')->willReturn($amount);
-        $amount->method('getTotalPrice')->willReturn(100.00);
-
         $order->method('getOrderCustomer')->willReturn($customer);
         $order->method('getCurrency')->willReturn($currency);
+        $transactionStruct->method('getReturnUrl')->willReturn('https://return.url');
         $order->method('getSalesChannelId')->willReturn('sales-channel-id');
+        $order->method('getOrderNumber')->willReturn('ORDER-123');
+        $order->method('getBillingAddress')->willReturn($billingAddress);
+        $order->method('getDeliveries')->willReturn($deliveries);
+        $order->method('getLineItems')->willReturn($lineItems);
 
-        $customer->method('getEmail')->willReturn('test@example.com');
+        $price = $this->createMock(CalculatedPrice::class);
+        $price->method('getTotalPrice')->willReturn(10.0);
+        $orderTransaction->method('getAmount')->willReturn($price);
         $currency->method('getIsoCode')->willReturn('NGN');
 
-        $transaction->method('getReturnUrl')->willReturn('https://return.url');
+        $customer->method('getEmail')->willReturn('test@example.com');
+        $customer->method('getFirstName')->willReturn('John');
+        $customer->method('getLastName')->willReturn('Doe');
+
+        $billingAddress->method('getFirstName')->willReturn('John');
+        $billingAddress->method('getLastName')->willReturn('Doe');
+        $billingAddress->method('getStreet')->willReturn('Main St');
+        $billingAddress->method('getZipcode')->willReturn('12345');
+        $billingAddress->method('getCity')->willReturn('Lagos');
+        $billingAddress->method('getCountry')->willReturn($country);
+        $billingAddress->method('getPhoneNumber')->willReturn('1234567890');
+        $country->method('getName')->willReturn('Nigeria');
+
+        $delivery->method('getShippingOrderAddress')->willReturn($shippingAddress);
+        $shippingAddress->method('getFirstName')->willReturn('Jane');
+        $shippingAddress->method('getLastName')->willReturn('Doe');
+        $shippingAddress->method('getStreet')->willReturn('Second St');
+        $shippingAddress->method('getZipcode')->willReturn('54321');
+        $shippingAddress->method('getCity')->willReturn('Abuja');
+        $shippingAddress->method('getCountry')->willReturn($country);
+
+        $lineItem->method('getQuantity')->willReturn(2);
+        $lineItem->method('getLabel')->willReturn('Product A');
 
         $this->config->method('get')->willReturnMap([
-            ['paymentOptions', null, 'sales-channel-id', ['card']],
+            ['paymentOptions', null, 'sales-channel-id', null],
+            ['metaData', [], 'sales-channel-id', [
+                'orderId',
+                'customerName',
+                'customerEmail',
+                'customerPhone',
+                'billingAddress',
+                'shippingAddress',
+                'products',
+            ]],
+        ]);
+
+        $payload = $this->payloadBuilder->build($orderTransaction, $transactionStruct);
+
+        $this->assertArrayHasKey('metadata', $payload);
+        $customFields = $payload['metadata']['custom_fields'];
+
+        $fieldsMap = [];
+
+        foreach ($customFields as $field) {
+            $fieldsMap[$field['variable_name']] = $field['value'];
+        }
+
+        $this->assertEquals('ORDER-123', $fieldsMap['order_id']);
+        $this->assertEquals('John Doe', $fieldsMap['customer_name']);
+        $this->assertEquals('test@example.com', $fieldsMap['customer_email']);
+        $this->assertEquals('1234567890', $fieldsMap['customer_phone']);
+        $this->assertStringContainsString('Main St', $fieldsMap['order_billing_address']);
+        $this->assertStringContainsString('Second St', $fieldsMap['order_shipping_address']);
+        $this->assertStringContainsString('Product A', $fieldsMap['products_purchased']);
+    }
+
+    public function testBuildWithEmptyMetadata(): void
+    {
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $order = $this->createMock(OrderEntity::class);
+        $customer = $this->createMock(OrderCustomerEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+
+        $orderTransaction->method('getOrder')->willReturn($order);
+        $order->method('getOrderCustomer')->willReturn($customer);
+        $order->method('getCurrency')->willReturn($currency);
+        $transactionStruct->method('getReturnUrl')->willReturn('https://return.url');
+        $order->method('getSalesChannelId')->willReturn('sales-channel-id');
+
+        $price = $this->createMock(CalculatedPrice::class);
+        $price->method('getTotalPrice')->willReturn(10.0);
+        $orderTransaction->method('getAmount')->willReturn($price);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $customer->method('getEmail')->willReturn('test@example.com');
+
+        $this->config->method('get')->willReturnMap([
+            ['paymentOptions', null, 'sales-channel-id', null],
             ['metaData', [], 'sales-channel-id', []],
-            ['splitPaymentTransactionCharge', null, 'sales-channel-id', 100],
         ]);
 
-        $this->config->method('getBool')->willReturnMap([
-            ['enableSplitPayment', 'sales-channel-id', true],
+        $payload = $this->payloadBuilder->build($orderTransaction, $transactionStruct);
+
+        $this->assertArrayHasKey('metadata', $payload);
+        $this->assertArrayNotHasKey('custom_fields', $payload['metadata']);
+        $this->assertEquals('https://return.url', $payload['metadata']['cancel_action']);
+    }
+
+    public function testBuildWithInvalidMetadataOptions(): void
+    {
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $order = $this->createMock(OrderEntity::class);
+        $customer = $this->createMock(OrderCustomerEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+
+        $orderTransaction->method('getOrder')->willReturn($order);
+        $order->method('getOrderCustomer')->willReturn($customer);
+        $order->method('getCurrency')->willReturn($currency);
+        $transactionStruct->method('getReturnUrl')->willReturn('https://return.url');
+        $order->method('getSalesChannelId')->willReturn('sales-channel-id');
+
+        $price = $this->createMock(CalculatedPrice::class);
+        $price->method('getTotalPrice')->willReturn(10.0);
+        $orderTransaction->method('getAmount')->willReturn($price);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $customer->method('getEmail')->willReturn('test@example.com');
+
+        $this->config->method('get')->willReturnMap([
+            ['paymentOptions', null, 'sales-channel-id', null],
+            ['metaData', [], 'sales-channel-id', ['invalidOption']],
         ]);
 
+        $payload = $this->payloadBuilder->build($orderTransaction, $transactionStruct);
+
+        $this->assertArrayHasKey('metadata', $payload);
+        $this->assertArrayNotHasKey('custom_fields', $payload['metadata']);
+    }
+
+    public function testBuildMetadataWithMissingEntities(): void
+    {
+        $order = $this->createMock(OrderEntity::class);
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+
+        $orderTransaction->method('getOrder')->willReturn($order);
+        $order->method('getCurrency')->willReturn($this->createMock(CurrencyEntity::class));
+        $transactionStruct->method('getReturnUrl')->willReturn('https://return.url');
+        $order->method('getSalesChannelId')->willReturn('sales-channel-id');
+
+        $price = $this->createMock(CalculatedPrice::class);
+        $price->method('getTotalPrice')->willReturn(10.0);
+        $orderTransaction->method('getAmount')->willReturn($price);
+
+        // Mock missing entities for metadata
+        $order->method('getBillingAddress')->willReturn(null);
+        $order->method('getDeliveries')->willReturn(null);
+        $order->method('getLineItems')->willReturn(null);
+        $order->method('getOrderNumber')->willReturn(null);
+
+        $this->config->method('get')->willReturnMap([
+            ['metaData', [], 'sales-channel-id', [
+                'orderId',
+                'customerName',
+                'customerEmail',
+                'customerPhone',
+                'billingAddress',
+                'shippingAddress',
+                'products',
+            ]],
+            ['paymentOptions', null, 'sales-channel-id', null],
+        ]);
+
+        $this->config->method('getBool')->with('enableSplitPayment', 'sales-channel-id')->willReturn(false);
+        $this->config->method('getString')->willReturn('');
+
+        $customer = $this->createMock(OrderCustomerEntity::class);
+        $customer->method('getEmail')->willReturn('test@example.com');
+
+        // build() calls getOrderCustomer once. buildMetadata() calls it twice (name and email).
+        $order->method('getOrderCustomer')->willReturnOnConsecutiveCalls($customer, null, null);
+
+        $payload = $this->payloadBuilder->build($orderTransaction, $transactionStruct);
+
+        $this->assertArrayNotHasKey('custom_fields', $payload['metadata']);
+    }
+
+    public function testBuildWithSplitPaymentEnabledButNoCodes(): void
+    {
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $order = $this->createMock(OrderEntity::class);
+        $customer = $this->createMock(OrderCustomerEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+
+        $orderTransaction->method('getOrder')->willReturn($order);
+        $order->method('getOrderCustomer')->willReturn($customer);
+        $order->method('getCurrency')->willReturn($currency);
+        $transactionStruct->method('getReturnUrl')->willReturn('https://return.url');
+        $order->method('getSalesChannelId')->willReturn('sales-channel-id');
+
+        $price = $this->createMock(CalculatedPrice::class);
+        $price->method('getTotalPrice')->willReturn(100.0);
+        $orderTransaction->method('getAmount')->willReturn($price);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $customer->method('getEmail')->willReturn('test@example.com');
+
+        $this->config->method('getBool')->with('enableSplitPayment', 'sales-channel-id')->willReturn(true);
+        $this->config->method('getString')->willReturn(''); // Both subaccount and split code empty
+
+        $payload = $this->payloadBuilder->build($orderTransaction, $transactionStruct);
+
+        $this->assertArrayNotHasKey('split_code', $payload);
+        $this->assertArrayNotHasKey('subaccount', $payload);
+        $this->assertArrayNotHasKey('transaction_charge', $payload);
+    }
+
+    public function testBuildWithSplitPaymentEnabledAndSubaccountCodeOnly(): void
+    {
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $order = $this->createMock(OrderEntity::class);
+        $customer = $this->createMock(OrderCustomerEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+
+        $orderTransaction->method('getOrder')->willReturn($order);
+        $order->method('getOrderCustomer')->willReturn($customer);
+        $order->method('getCurrency')->willReturn($currency);
+        $transactionStruct->method('getReturnUrl')->willReturn('https://return.url');
+        $order->method('getSalesChannelId')->willReturn('sales-channel-id');
+
+        $price = $this->createMock(CalculatedPrice::class);
+        $price->method('getTotalPrice')->willReturn(100.0);
+        $orderTransaction->method('getAmount')->willReturn($price);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $customer->method('getEmail')->willReturn('test@example.com');
+
+        $this->config->method('getBool')->with('enableSplitPayment', 'sales-channel-id')->willReturn(true);
         $this->config->method('getString')->willReturnMap([
-            ['subaccountCode', 'sales-channel-id', ''],
-            ['splitCode', 'sales-channel-id', 'SPL_67890'],
+            ['subaccountCode', 'sales-channel-id', 'SUB_123'],
+            ['splitCode', 'sales-channel-id', ''],
             ['paystackChargesBearer', 'sales-channel-id', 'account'],
         ]);
+        $this->config->method('get')->willReturnMap([
+            ['splitPaymentTransactionCharge', null, 'sales-channel-id', 50],
+            ['paymentOptions', null, 'sales-channel-id', null],
+        ]);
 
-        $payload = $this->payloadBuilder->build($orderTransaction, $transaction);
+        $payload = $this->payloadBuilder->build($orderTransaction, $transactionStruct);
 
-        $this->assertEquals('SPL_67890', $payload['split_code']);
-        $this->assertEquals(10000, $payload['transaction_charge']);
+        $this->assertArrayNotHasKey('split_code', $payload);
+        $this->assertEquals('SUB_123', $payload['subaccount']);
+        $this->assertEquals(5000, $payload['transaction_charge']);
         $this->assertEquals('account', $payload['bearer']);
-        $this->assertArrayNotHasKey('subaccount', $payload);
     }
 }

@@ -214,6 +214,50 @@
     </card>
 
     <card>
+        <title>Bank Data Collection</title>
+        <title lang="de-DE">Bankdatenerfassung</title>
+
+        <input-field type="bool">
+            <name>collectBankData</name>
+            <label>Enable Bank Data Collection</label>
+            <label lang="de-DE">Bankdatenerfassung aktivieren</label>
+            <defaultValue>false</defaultValue>
+            <helpText>
+                Enable or disable the collection of bank account details from customers.
+            </helpText>
+            <helpText lang="de-DE">
+                Aktivieren oder deaktivieren Sie die Erfassung von Bankverbindungen von Kunden.
+            </helpText>
+        </input-field>
+
+        <input-field type="bool">
+            <name>showBvnField</name>
+            <label>Show BVN Field</label>
+            <label lang="de-DE">BVN-Feld anzeigen</label>
+            <defaultValue>true</defaultValue>
+            <helpText>
+                Toggle visibility of the BVN (Bank Verification Number) field in the bank data form.
+            </helpText>
+            <helpText lang="de-DE">
+                Schalten Sie die Sichtbarkeit des BVN-Feldes (Bank Verification Number) im Bankdatenformular um.
+            </helpText>
+        </input-field>
+
+        <input-field type="bool">
+            <name>requireBvn</name>
+            <label>Require BVN</label>
+            <label lang="de-DE">BVN erforderlich</label>
+            <defaultValue>false</defaultValue>
+            <helpText>
+                If enabled, the BVN field will be mandatory for form submission.
+            </helpText>
+            <helpText lang="de-DE">
+                Wenn aktiviert, ist das BVN-Feld für die Formularübermittlung obligatorisch.
+            </helpText>
+        </input-field>
+    </card>
+
+    <card>
         <title>Debugging</title>
         <title lang="de-DE">Fehlerdiagnose</title>
 

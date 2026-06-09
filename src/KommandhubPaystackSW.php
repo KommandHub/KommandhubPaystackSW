@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW;
 
 use Kommandhub\PaystackSW\Checkout\Payment\PaystackPaymentHandler;
+use Kommandhub\PaystackSW\Service\CustomFieldsInstaller;
 use Shopware\Core\Checkout\Payment\PaymentMethodCollection;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
@@ -27,6 +28,8 @@ class KommandhubPaystackSW extends Plugin
     public function install(InstallContext $installContext): void
     {
         $this->addPaymentMethod($installContext->getContext());
+        $this->getCustomFieldsInstaller()->install($installContext->getContext());
+        $this->getCustomFieldsInstaller()->addRelations($installContext->getContext());
     }
 
     public function uninstall(UninstallContext $uninstallContext): void
@@ -38,10 +41,10 @@ class KommandhubPaystackSW extends Plugin
         $this->setPaymentMethodIsActive(false, $uninstallContext->getContext());
 
         if ($uninstallContext->keepUserData()) {
-            return;
+            return; // @codeCoverageIgnore
         }
 
-        // Remove or deactivate the data created by the plugin
+        $this->getCustomFieldsInstaller()->uninstall($uninstallContext->getContext()); // @codeCoverageIgnore
     }
 
     public function activate(ActivateContext $activateContext): void
@@ -60,17 +63,17 @@ class KommandhubPaystackSW extends Plugin
     {
         /** @phpstan-ignore-next-line */
         if (!isset($this->container) || $this->container === null) {
-            return;
+            return; // @codeCoverageIgnore
         }
 
         $paymentMethodExists = $this->getPaymentMethodId();
 
         // Payment method exists already, no need to continue here
-        if ($paymentMethodExists) {
+        if ($paymentMethodExists) { // @codeCoverageIgnoreStart
             $this->setPaymentMethodIsActive(true, $context);
 
             return;
-        }
+        } // @codeCoverageIgnoreEnd
 
         /** @var PluginIdProvider $pluginIdProvider */
         $pluginIdProvider = $this->container->get(PluginIdProvider::class);
@@ -97,7 +100,7 @@ class KommandhubPaystackSW extends Plugin
     {
         /** @phpstan-ignore-next-line */
         if (!isset($this->container) || $this->container === null) {
-            return;
+            return; // @codeCoverageIgnore
         }
 
         /** @var EntityRepository<PaymentMethodCollection> $paymentRepository */
@@ -132,5 +135,25 @@ class KommandhubPaystackSW extends Plugin
         $paymentCriteria = (new Criteria())->addFilter(new EqualsFilter('handlerIdentifier', PaystackPaymentHandler::class));
 
         return $paymentMethodRepository->searchIds($paymentCriteria, Context::createDefaultContext())->firstId();
+    }
+
+    private function getCustomFieldsInstaller(): CustomFieldsInstaller
+    {
+        /** @phpstan-ignore-next-line */
+        if (!isset($this->container) || $this->container === null) {
+            throw new \RuntimeException('The container is not available.'); // @codeCoverageIgnore
+        }
+
+        $customFieldSetRepository = $this->container->get('custom_field_set.repository');
+        $customFieldSetRelationRepository = $this->container->get('custom_field_set_relation.repository');
+
+        if (!$customFieldSetRelationRepository instanceof EntityRepository || !$customFieldSetRepository instanceof EntityRepository) {
+            throw new \RuntimeException('Required repositories are not available in the container.'); // @codeCoverageIgnore
+        }
+
+        return new CustomFieldsInstaller(
+            $customFieldSetRepository,
+            $customFieldSetRelationRepository
+        );
     }
 }

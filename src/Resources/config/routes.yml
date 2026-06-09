@@ -1,0 +1,3 @@
+kommandhub_paystack_storefront:
+    resource: ../../Storefront/Controller/
+    type: attribute

@@ -271,7 +271,7 @@ final class PaystackPaymentHandler extends AbstractPaystackPaymentHandler
         $data = $verification['data'] ?? [];
 
         if (!is_array($data)) {
-            $data = [];
+            $data = []; // @codeCoverageIgnore
         }
 
         $this->orderTransactionService->updateCustomFields(

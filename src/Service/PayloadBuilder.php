@@ -70,7 +70,7 @@ readonly class PayloadBuilder
             key: 'metaData',
             default: [],
             salesChannelId: $salesChannelId
-        );
+        ) ?? [];
 
         // 6. Build the final payload array according to Paystack API specifications.
         // The amount is multiplied by 100 to convert from the major currency unit (e.g., Naira)
@@ -140,11 +140,15 @@ readonly class PayloadBuilder
         foreach ($selectedMetaData as $id) {
             switch ($id) {
                 case 'orderId':
-                    $metadata['custom_fields'][] = [
-                        'display_name' => 'Order ID',
-                        'variable_name' => 'order_id',
-                        'value' => $order->getOrderNumber(),
-                    ];
+                    $orderNumber = $order->getOrderNumber();
+
+                    if ($orderNumber !== null) {
+                        $metadata['custom_fields'][] = [
+                            'display_name' => 'Order ID',
+                            'variable_name' => 'order_id',
+                            'value' => $orderNumber,
+                        ];
+                    }
                     break;
                 case 'customerName':
                     $customer = $order->getOrderCustomer();

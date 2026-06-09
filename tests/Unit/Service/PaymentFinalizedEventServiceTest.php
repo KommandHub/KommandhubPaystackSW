@@ -17,18 +17,18 @@ class PaymentFinalizedEventServiceTest extends TestCase
 {
     public function testFireEvent(): void
     {
-        $eventDispatcher = $this->createMock(EventDispatcherInterface::class);
-        $service = new PaymentFinalizedEventService($eventDispatcher);
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $service = new PaymentFinalizedEventService($dispatcher);
 
         $order = $this->createMock(OrderEntity::class);
-        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $paymentTransactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $struct = $this->createMock(PaymentTransactionStruct::class);
         $context = Context::createDefaultContext();
 
-        $eventDispatcher->expects($this->once())
+        $dispatcher->expects($this->once())
             ->method('dispatch')
             ->with($this->isInstanceOf(PaystackPaymentFinalizedEvent::class));
 
-        $service->fireEvent($order, $orderTransaction, $paymentTransactionStruct, $context);
+        $service->fireEvent($order, $transaction, $struct, $context);
     }
 }
