@@ -6,11 +6,46 @@
       "paymentChannel": "Zahlungskanal"
     },
     "grid": {
-      "reference": "Paystack-Referenz",
-      "transactionId": "Paystack-Transaktions-ID",
+      "reference": "Referenz",
+      "transactionId": "Transaktions-ID",
       "processingFee": "Bearbeitungsgebühr",
-      "verifiedAt": "Verifiziert am"
+      "state": "Status",
+      "verifiedAt": "Verifiziert am",
+      "refund": "Rückerstattung",
+      "captures": "Erfassungen",
+      "refunds": "Rückerstattungen"
     },
+    "refund": {
+      "modalTitle": "Rückerstattung bearbeiten",
+      "listModalTitle": "Rückerstattungen",
+      "amountLabel": "Rückerstattungsbetrag",
+      "amountPlaceholder": "Geben Sie den zu erstattenden Betrag ein",
+      "amountHelpText": "Der Betrag wird in die kleinste Währungseinheit umgerechnet (z. B. Kobo).",
+      "currencyLabel": "Währung",
+      "customerNoteLabel": "Kundennotiz",
+      "customerNotePlaceholder": "Notiz vom Händler an den Kunden",
+      "merchantNoteLabel": "Händlernotiz",
+      "merchantNotePlaceholder": "Notiz vom Händler an sich selbst",
+      "confirmButton": "Rückerstattung bearbeiten"
+    },
+    "captures": {
+      "grid": {
+        "amount": "Betrag",
+        "state": "Status",
+        "externalReference": "Externe Referenz",
+        "createdAt": "Erstellt am"
+      }
+    },
+    "refunds": {
+      "grid": {
+        "amount": "Betrag",
+        "state": "Status",
+        "externalReference": "Externe Referenz",
+        "reason": "Grund",
+        "createdAt": "Erstellt am"
+      }
+    },
+    "header": "Paystack-Transaktionen",
     "emptyState": {
       "title": "Keine Paystack-Transaktion gefunden",
       "subline": "Diese Bestellung wurde nicht über Paystack abgewickelt oder die Transaktionsdetails sind nicht verfügbar."

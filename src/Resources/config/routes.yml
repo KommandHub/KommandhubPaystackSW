@@ -1,3 +1,7 @@
 kommandhub_paystack_storefront:
     resource: ../../Storefront/Controller/
     type: attribute
+
+kommandhub_paystack_administation:
+    resource: ../../Administration/Controller/
+    type: attribute

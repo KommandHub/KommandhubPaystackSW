@@ -6,6 +6,13 @@ Shopware.Locale.extend('fr-FR', frFR);
 Shopware.Locale.extend('de-DE', deDE);
 Shopware.Locale.extend('en-GB', enGB);
 
+import PaystackRefundService from './service/paystack-refund.service';
+
+Shopware.Service().register('paystackRefundService', (container) => {
+    const initContainer = Shopware.Application.getContainer('init');
+    return new PaystackRefundService(initContainer.httpClient, container.loginService);
+});
+
 import './module/sw-order/page/sw-order-detail'
 import './view/kommandhub-paystack-detail'
 

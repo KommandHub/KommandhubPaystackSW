@@ -8,6 +8,36 @@ services:
     resource: '../../*'
     exclude: '../../{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
 
+  Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionVerificationProcessorInterface:
+    alias: Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionVerificationProcessor
+
+  Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionMetadataProcessorInterface:
+    alias: Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionMetadataProcessor
+
   Kommandhub\PaystackSW\Checkout\Payment\PaystackPaymentHandler:
     tags:
       - { name: 'shopware.payment_handler' }
+
+  Kommandhub\PaystackSW\Administration\Controller\RefundController:
+    arguments:
+      $paystack: '@Kommandhub\PaystackSW\Service\Paystack'
+    tags:
+      - { name: 'container.service', method: 'setContainer' }
+    calls:
+      - [setContainer, ['@service_container']]
+    public: true
+
+  Kommandhub\PaystackSW\Service\Webhook\RefundInitializeService:
+    arguments:
+      $orderTransactionRepository: '@order_transaction.repository'
+      $orderTransactionCaptureRepository: '@order_transaction_capture.repository'
+      $orderTransactionCaptureRefundRepository: '@order_transaction_capture_refund.repository'
+      $initialStateIdLoader: '@Shopware\Core\System\StateMachine\Loader\InitialStateIdLoader'
+      $logger: '@logger'
+    public: true
+
+  Kommandhub\PaystackSW\Storefront\Controller\WebhookController:
+    public: true
+    calls:
+      - [ setContainer, [ '@service_container' ] ]
+    tags: [ ]

@@ -6,11 +6,46 @@
       "paymentChannel": "Canal de paiement"
     },
     "grid": {
-      "reference": "Référence Paystack",
-      "transactionId": "ID de transaction Paystack",
+      "reference": "Référence",
+      "transactionId": "ID de transaction",
       "processingFee": "Frais de traitement",
-      "verifiedAt": "Vérifié à"
+      "state": "Statut",
+      "verifiedAt": "Vérifié à",
+      "refund": "Remboursement",
+      "captures": "Captures",
+      "refunds": "Remboursements"
     },
+    "refund": {
+      "modalTitle": "Traiter le remboursement",
+      "listModalTitle": "Remboursements",
+      "amountLabel": "Montant du remboursement",
+      "amountPlaceholder": "Entrez le montant à rembourser",
+      "amountHelpText": "Le montant sera converti dans la plus petite unité monétaire (ex: kobo).",
+      "currencyLabel": "Devise",
+      "customerNoteLabel": "Note client",
+      "customerNotePlaceholder": "Note du marchand au client",
+      "merchantNoteLabel": "Note marchand",
+      "merchantNotePlaceholder": "Note du marchand pour lui-même",
+      "confirmButton": "Traiter le remboursement"
+    },
+    "captures": {
+      "grid": {
+        "amount": "Montant",
+        "state": "Statut",
+        "externalReference": "Référence externe",
+        "createdAt": "Créé le"
+      }
+    },
+    "refunds": {
+      "grid": {
+        "amount": "Montant",
+        "state": "Statut",
+        "externalReference": "Référence externe",
+        "reason": "Raison",
+        "createdAt": "Créé le"
+      }
+    },
+    "header": "Transactions Paystack",
     "emptyState": {
       "title": "Aucune transaction Paystack trouvée",
       "subline": "Cette commande n'a pas été traitée via Paystack ou les détails de la transaction ne sont pas disponibles."
