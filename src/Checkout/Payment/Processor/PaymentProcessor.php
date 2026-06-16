@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Checkout\Payment\Processor;
 
 use Kommandhub\PaystackSW\Checkout\Payment\Struct\PaystackInitializationResponse;
+use Kommandhub\PaystackSW\Exceptions\PaymentException;
 use Kommandhub\PaystackSW\Exceptions\PaystackException;
 use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Kommandhub\PaystackSW\Service\PayloadBuilder;
 use Kommandhub\PaystackSW\Service\TransactionService;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
-use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Framework\Context;
 
 readonly class PaymentProcessor

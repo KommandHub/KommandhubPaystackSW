@@ -78,11 +78,15 @@ plugin-list:
 
 test:
 	$(CHECK_READY)
-	$(call EXEC_IN_PLUGIN,php ../../../bin/phpunit -c phpunit.dist.xml --testdox --color=always $${FILTER})
+	$(call EXEC_IN_PLUGIN,php ../../../bin/phpunit -c phpunit.dist.xml --testdox --display-deprecations \
+                                                                                   --display-warnings \
+                                                                                   --display-notices --color=always $${FILTER})
 
 test-coverage:
 	$(CHECK_READY)
-	$(call EXEC_IN_PLUGIN,php ../../../bin/phpunit -c phpunit.dist.xml --coverage-text --color=always)
+	$(call EXEC_IN_PLUGIN,php ../../../bin/phpunit -c phpunit.dist.xml --coverage-text --display-deprecations \
+																						  --display-warnings \
+																						  --display-notices --color=always)
 
 cs:
 	$(CHECK_READY)

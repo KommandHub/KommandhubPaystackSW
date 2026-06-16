@@ -5,17 +5,25 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit\Checkout\Payment\Processor;
 
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionVerificationProcessor;
+use Kommandhub\PaystackSW\Exceptions\PaymentException;
 use Kommandhub\PaystackSW\Service\TransactionService;
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
-use Shopware\Core\Checkout\Payment\PaymentException;
+use Shopware\Core\Checkout\Order\OrderEntity;
+use Shopware\Core\Checkout\Payment\PaymentException as ShopwarePaymentException;
 use Shopware\Core\Framework\Context;
+use Shopware\Core\System\Currency\CurrencyEntity;
+use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 
 #[CoversClass(TransactionVerificationProcessor::class)]
+#[UsesClass(PaystackCurrencyHelper::class)]
+#[UsesClass(PaymentException::class)]
 class TransactionVerificationProcessorTest extends TestCase
 {
     private TransactionService&MockObject $transactionService;
@@ -43,10 +51,21 @@ class TransactionVerificationProcessorTest extends TestCase
         $transaction = $this->createMock(OrderTransactionEntity::class);
         $transaction->method('getId')->willReturn('test-id');
 
+        $order = $this->createMock(OrderEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $order->method('getCurrency')->willReturn($currency);
+        $transaction->method('getOrder')->willReturn($order);
+
+        $calculatedPrice = $this->createMock(CalculatedPrice::class);
+        $calculatedPrice->method('getTotalPrice')->willReturn(20.00);
+        $transaction->method('getAmount')->willReturn($calculatedPrice);
+
         $verificationData = [
             'status' => true,
             'data' => [
                 'status' => 'success',
+                'amount' => 2000,
             ],
         ];
 
@@ -69,10 +88,9 @@ class TransactionVerificationProcessorTest extends TestCase
         $this->transactionService->method('verify')->willThrowException(new \Exception('API Error'));
 
         $this->logger->expects($this->once())->method('error');
-        $this->transactionStateHandler->expects($this->once())->method('process')->with('test-id', $this->context);
 
-        $this->expectException(PaymentException::class);
-        $this->expectExceptionMessage('Payment verification temporarily failed.');
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Payment verification temporarily unavailable.');
 
         $this->processor->verify($reference, $transaction, $this->context);
     }
@@ -89,9 +107,8 @@ class TransactionVerificationProcessorTest extends TestCase
         ];
 
         $this->transactionService->method('verify')->willReturn($verificationData);
-        $this->transactionStateHandler->expects($this->once())->method('fail')->with('test-id', $this->context);
 
-        $this->expectException(PaymentException::class);
+        $this->expectException(ShopwarePaymentException::class);
         $this->expectExceptionMessage('Verification failed message');
 
         $this->processor->verify($reference, $transaction, $this->context);
@@ -103,18 +120,28 @@ class TransactionVerificationProcessorTest extends TestCase
         $transaction = $this->createMock(OrderTransactionEntity::class);
         $transaction->method('getId')->willReturn('test-id');
 
+        $order = $this->createMock(OrderEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $order->method('getCurrency')->willReturn($currency);
+        $transaction->method('getOrder')->willReturn($order);
+
+        $calculatedPrice = $this->createMock(CalculatedPrice::class);
+        $calculatedPrice->method('getTotalPrice')->willReturn(20.00);
+        $transaction->method('getAmount')->willReturn($calculatedPrice);
+
         $verificationData = [
             'status' => true,
             'data' => [
                 'status' => 'abandoned',
+                'amount' => 2000,
             ],
         ];
 
         $this->transactionService->method('verify')->willReturn($verificationData);
-        $this->transactionStateHandler->expects($this->once())->method('cancel')->with('test-id', $this->context);
 
-        $this->expectException(PaymentException::class);
-        $this->expectExceptionMessage('The customer abandoned the payment.');
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Payment was abandoned by the customer.');
 
         $this->processor->verify($reference, $transaction, $this->context);
     }
@@ -125,18 +152,28 @@ class TransactionVerificationProcessorTest extends TestCase
         $transaction = $this->createMock(OrderTransactionEntity::class);
         $transaction->method('getId')->willReturn('test-id');
 
+        $order = $this->createMock(OrderEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $order->method('getCurrency')->willReturn($currency);
+        $transaction->method('getOrder')->willReturn($order);
+
+        $calculatedPrice = $this->createMock(CalculatedPrice::class);
+        $calculatedPrice->method('getTotalPrice')->willReturn(20.00);
+        $transaction->method('getAmount')->willReturn($calculatedPrice);
+
         $verificationData = [
             'status' => true,
             'data' => [
                 'status' => 'failed',
+                'amount' => 2000,
             ],
         ];
 
         $this->transactionService->method('verify')->willReturn($verificationData);
-        $this->transactionStateHandler->expects($this->once())->method('fail')->with('test-id', $this->context);
 
-        $this->expectException(PaymentException::class);
-        $this->expectExceptionMessage('The payment failed or was reversed.');
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Payment was rejected by the bank.');
 
         $this->processor->verify($reference, $transaction, $this->context);
     }
@@ -147,15 +184,188 @@ class TransactionVerificationProcessorTest extends TestCase
         $transaction = $this->createMock(OrderTransactionEntity::class);
         $transaction->method('getId')->willReturn('test-id');
 
+        $order = $this->createMock(OrderEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $order->method('getCurrency')->willReturn($currency);
+        $transaction->method('getOrder')->willReturn($order);
+
+        $calculatedPrice = $this->createMock(CalculatedPrice::class);
+        $calculatedPrice->method('getTotalPrice')->willReturn(20.00);
+        $transaction->method('getAmount')->willReturn($calculatedPrice);
+
         $verificationData = [
             'status' => true,
             'data' => [
                 'status' => 'pending',
+                'amount' => 2000,
             ],
         ];
 
         $this->transactionService->method('verify')->willReturn($verificationData);
         $this->transactionStateHandler->expects($this->once())->method('process')->with('test-id', $this->context);
+
+        $this->expectException(PaymentException::class);
+        $this->expectExceptionMessage('Payment verification is pending.');
+
+        $this->processor->verify($reference, $transaction, $this->context);
+    }
+
+    public function testVerifyThrowsOnMissingData(): void
+    {
+        $reference = 'test-reference';
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction->method('getId')->willReturn('test-id');
+
+        $verificationData = [
+            'status' => true,
+            // 'data' is missing
+        ];
+
+        $this->transactionService->method('verify')->willReturn($verificationData);
+
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Missing Paystack transaction data.');
+
+        $this->processor->verify($reference, $transaction, $this->context);
+    }
+
+    public function testVerifyThrowsOnInvalidAmount(): void
+    {
+        $reference = 'test-reference';
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction->method('getId')->willReturn('test-id');
+
+        $verificationData = [
+            'status' => true,
+            'data' => [
+                'amount' => 'invalid',
+            ],
+        ];
+
+        $this->transactionService->method('verify')->willReturn($verificationData);
+
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Invalid or missing Paystack amount.');
+
+        $this->processor->verify($reference, $transaction, $this->context);
+    }
+
+    public function testVerifyThrowsOnMissingOrder(): void
+    {
+        $reference = 'test-reference';
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction->method('getId')->willReturn('test-id');
+        $transaction->method('getOrder')->willReturn(null);
+
+        $verificationData = [
+            'status' => true,
+            'data' => [
+                'amount' => 2000,
+            ],
+        ];
+
+        $this->transactionService->method('verify')->willReturn($verificationData);
+
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Missing order currency information.');
+
+        $this->processor->verify($reference, $transaction, $this->context);
+    }
+
+    public function testVerifyThrowsOnAmountMismatch(): void
+    {
+        $reference = 'test-reference';
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction->method('getId')->willReturn('test-id');
+
+        $order = $this->createMock(OrderEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $order->method('getCurrency')->willReturn($currency);
+        $transaction->method('getOrder')->willReturn($order);
+
+        $calculatedPrice = $this->createMock(CalculatedPrice::class);
+        $calculatedPrice->method('getTotalPrice')->willReturn(20.00);
+        $transaction->method('getAmount')->willReturn($calculatedPrice);
+
+        $verificationData = [
+            'status' => true,
+            'data' => [
+                'amount' => 3000, // Mismatch
+                'status' => 'success',
+            ],
+        ];
+
+        $this->transactionService->method('verify')->willReturn($verificationData);
+        $this->logger->expects($this->once())->method('warning');
+
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Payment amount mismatch detected.');
+
+        $this->processor->verify($reference, $transaction, $this->context);
+    }
+
+    public function testVerifyThrowsOnMissingStatus(): void
+    {
+        $reference = 'test-reference';
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction->method('getId')->willReturn('test-id');
+
+        $order = $this->createMock(OrderEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $order->method('getCurrency')->willReturn($currency);
+        $transaction->method('getOrder')->willReturn($order);
+
+        $calculatedPrice = $this->createMock(CalculatedPrice::class);
+        $calculatedPrice->method('getTotalPrice')->willReturn(20.00);
+        $transaction->method('getAmount')->willReturn($calculatedPrice);
+
+        $verificationData = [
+            'status' => true,
+            'data' => [
+                'amount' => 2000,
+                // status missing
+            ],
+        ];
+
+        $this->transactionService->method('verify')->willReturn($verificationData);
+
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Missing Paystack transaction status.');
+
+        $this->processor->verify($reference, $transaction, $this->context);
+    }
+
+    public function testVerifyThrowsOnUnknownStatus(): void
+    {
+        $reference = 'test-reference';
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction->method('getId')->willReturn('test-id');
+
+        $order = $this->createMock(OrderEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $order->method('getCurrency')->willReturn($currency);
+        $transaction->method('getOrder')->willReturn($order);
+
+        $calculatedPrice = $this->createMock(CalculatedPrice::class);
+        $calculatedPrice->method('getTotalPrice')->willReturn(20.00);
+        $transaction->method('getAmount')->willReturn($calculatedPrice);
+
+        $verificationData = [
+            'status' => true,
+            'data' => [
+                'amount' => 2000,
+                'status' => 'unknown-status',
+            ],
+        ];
+
+        $this->transactionService->method('verify')->willReturn($verificationData);
+
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Unknown Paystack status: unknown-status');
 
         $this->processor->verify($reference, $transaction, $this->context);
     }

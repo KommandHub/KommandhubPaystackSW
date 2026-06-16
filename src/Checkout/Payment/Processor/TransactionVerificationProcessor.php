@@ -5,169 +5,192 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Checkout\Payment\Processor;
 
 use Kommandhub\PaystackSW\Checkout\Payment\Enum\PaystackTransactionStatus;
+use Kommandhub\PaystackSW\Exceptions\PaymentException;
 use Kommandhub\PaystackSW\Service\TransactionService;
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
-use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Framework\Context;
 
-class TransactionVerificationProcessor implements TransactionVerificationProcessorInterface
+readonly class TransactionVerificationProcessor implements TransactionVerificationProcessorInterface
 {
-    /**
-     * @param TransactionService $transactionService
-     * @param OrderTransactionStateHandler $transactionStateHandler
-     * @param LoggerInterface $logger
-     */
     public function __construct(
-        private readonly TransactionService $transactionService,
-        private readonly OrderTransactionStateHandler $transactionStateHandler,
-        private readonly LoggerInterface $logger,
+        private TransactionService $transactionService,
+        private OrderTransactionStateHandler $transactionStateHandler,
+        private LoggerInterface $logger,
     ) {
     }
 
     /**
-     * Verifies the Paystack transaction status.
-     *
-     * @param string $reference
-     * @param OrderTransactionEntity $transaction
-     * @param Context $context
-     *
-     * @return array
-     *
      * @throws PaymentException
      */
-    public function verify(string $reference, OrderTransactionEntity $transaction, Context $context): array
-    {
-        try {
-            $verification = $this->transactionService->verify($reference);
-        } catch (\Throwable $e) {
-            $this->logger->error('Paystack API error during verification.', [
-                'transaction_id' => $transaction->getId(),
-                'reference' => $reference,
-                'exception' => $e->getMessage(),
-            ]);
+    public function verify(
+        string $reference,
+        OrderTransactionEntity $transaction,
+        Context $context
+    ): array {
+        $verification = $this->fetchVerification($reference, $transaction);
 
-            $this->transactionStateHandler->process($transaction->getId(), $context);
+        $this->assertSuccessfulResponse($verification, $transaction);
 
-            throw PaymentException::asyncFinalizeInterrupted(
-                $transaction->getId(),
-                'Payment verification temporarily failed.'
-            );
-        }
+        $data = $this->getData($verification, $transaction);
 
-        if (($verification['status'] ?? false) !== true) {
-            $this->transactionStateHandler->fail($transaction->getId(), $context);
+        $this->assertTransactionAmount($data, $transaction);
 
-            throw PaymentException::asyncFinalizeInterrupted(
-                $transaction->getId(),
-                $verification['message'] ?? 'Unable to verify Paystack payment.'
-            );
-        }
-
-        $this->assertTransactionStatus($verification, $transaction, $context);
+        $this->assertTransactionStatus($data, $transaction, $context);
 
         return $verification;
     }
 
     /**
-     * Asserts the Paystack transaction status and transitions the order transaction state accordingly.
+     * @return array<string, mixed>
      *
-     * @param array $verification
-     * @param OrderTransactionEntity $transaction
-     * @param Context $context
+     * @throws PaymentException
      */
-    private function assertTransactionStatus(
-        array $verification,
-        OrderTransactionEntity $transaction,
-        Context $context
-    ): void {
-        $statusValue = $verification['data']['status'] ?? null;
-
-        if ($statusValue === null) { // @codeCoverageIgnoreStart
-            $this->transactionStateHandler->fail($transaction->getId(), $context);
+    private function fetchVerification(
+        string $reference,
+        OrderTransactionEntity $transaction
+    ): array {
+        try {
+            return $this->transactionService->verify($reference);
+        } catch (\Throwable $e) {
+            $this->logger->error('Paystack verification API failure', [
+                'transactionId' => $transaction->getId(),
+                'reference' => $reference,
+                'error' => $e->getMessage(),
+            ]);
 
             throw PaymentException::asyncFinalizeInterrupted(
                 $transaction->getId(),
-                'Missing Paystack transaction status.'
+                'Payment verification temporarily unavailable.'
             );
-        } // @codeCoverageIgnoreEnd
+        }
+    }
 
-        $status = PaystackTransactionStatus::tryFrom((string)$statusValue);
+    /**
+     * @param array<string, mixed> $verification
+     */
+    private function assertSuccessfulResponse(
+        array $verification,
+        OrderTransactionEntity $transaction
+    ): void {
+        if (($verification['status'] ?? false) !== true) {
+            $this->fail(
+                $transaction->getId(),
+                is_scalar($verification['message'] ?? null) ? (string)$verification['message'] : 'Invalid Paystack verification response.'
+            );
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getData(
+        array $verification,
+        OrderTransactionEntity $transaction
+    ): array {
+        $data = $verification['data'] ?? null;
+
+        if (!is_array($data)) {
+            $this->fail($transaction->getId(), 'Missing Paystack transaction data.');
+        }
+
+        /** @var array<string, mixed> $data */
+        return $data;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function assertTransactionAmount(
+        array $data,
+        OrderTransactionEntity $transaction
+    ): void {
+        $paystackAmount = $data['amount'] ?? null;
+
+        if (!is_numeric($paystackAmount)) {
+            $this->fail($transaction->getId(), 'Invalid or missing Paystack amount.');
+        }
+
+        $order = $transaction->getOrder();
+
+        if ($order === null || $order->getCurrency() === null) {
+            $this->fail($transaction->getId(), 'Missing order currency information.');
+        }
+
+        $expected = PaystackCurrencyHelper::toMinorUnit(
+            $transaction->getAmount()->getTotalPrice(),
+            $order->getCurrency()->getIsoCode()
+        );
+
+        if ((int)$paystackAmount !== $expected) {
+            $this->logger->warning('Paystack amount mismatch', [
+                'transactionId' => $transaction->getId(),
+                'expected' => $expected,
+                'received' => (int)$paystackAmount,
+            ]);
+
+            $this->fail(
+                $transaction->getId(),
+                'Payment amount mismatch detected.'
+            );
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function assertTransactionStatus(
+        array $data,
+        OrderTransactionEntity $transaction,
+        Context $context
+    ): void {
+        $statusValue = $data['status'] ?? null;
+
+        if (!is_string($statusValue)) {
+            $this->fail($transaction->getId(), 'Missing Paystack transaction status.');
+        }
+
+        $status = PaystackTransactionStatus::tryFrom($statusValue);
+
+        if ($status === null) {
+            $this->fail(
+                $transaction->getId(),
+                sprintf('Unknown Paystack status: %s', $statusValue)
+            );
+        }
 
         match ($status) {
             PaystackTransactionStatus::SUCCESS => null,
 
-            PaystackTransactionStatus::ABANDONED => $this->handleCancel(
-                $transaction->getId(),
-                $context,
-                'The customer abandoned the payment.'
-            ),
+            PaystackTransactionStatus::ABANDONED => $this->fail($transaction->getId(), 'Payment was abandoned by the customer.'),
 
             PaystackTransactionStatus::FAILED,
-            PaystackTransactionStatus::REVERSED => $this->handleFail(
-                $transaction->getId(),
-                $context,
-                'The payment failed or was reversed.'
-            ),
+            PaystackTransactionStatus::REVERSED => $this->fail($transaction->getId(), 'Payment was rejected by the bank.'),
 
             PaystackTransactionStatus::ONGOING,
             PaystackTransactionStatus::PENDING,
             PaystackTransactionStatus::PROCESSING,
-            PaystackTransactionStatus::QUEUED => $this->handleProcess(
-                $transaction->getId(),
-                $context
-            ),
-
-            // @codeCoverageIgnoreStart
-            default => throw PaymentException::asyncFinalizeInterrupted(
-                $transaction->getId(),
-                sprintf('Unknown Paystack status: %s', $statusValue)
-            ),
-            // @codeCoverageIgnoreEnd
+            PaystackTransactionStatus::QUEUED => $this->handlePending($transaction->getId(), $context),
         };
     }
 
     /**
-     * Handles the cancellation of a payment.
-     *
-     * @param string $transactionId
-     * @param Context $context
-     * @param string $message
-     *
      * @throws PaymentException
      */
-    private function handleCancel(string $transactionId, Context $context, string $message): void
-    {
-        $this->transactionStateHandler->cancel($transactionId, $context);
-
-        throw PaymentException::customerCanceled($transactionId, $message);
-    }
-
-    /**
-     * Handles the failure of a payment.
-     *
-     * @param string $transactionId
-     * @param Context $context
-     * @param string $message
-     *
-     * @throws PaymentException
-     */
-    private function handleFail(string $transactionId, Context $context, string $message): void
-    {
-        $this->transactionStateHandler->fail($transactionId, $context);
-
-        throw PaymentException::asyncFinalizeInterrupted($transactionId, $message);
-    }
-
-    /**
-     * Transitions the transaction to the "process" state for intermediate statuses.
-     *
-     * @param string $transactionId
-     * @param Context $context
-     */
-    private function handleProcess(string $transactionId, Context $context): void
+    private function handlePending(string $transactionId, Context $context): void
     {
         $this->transactionStateHandler->process($transactionId, $context);
+
+        throw PaymentException::paymentVerificationPending();
+    }
+
+    /**
+     * @throws PaymentException
+     */
+    private function fail(string $transactionId, string $message): never
+    {
+        throw PaymentException::asyncFinalizeInterrupted($transactionId, $message);
     }
 }

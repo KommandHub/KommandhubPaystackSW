@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Service;
 
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Shopware\Core\Checkout\Order\Aggregate\OrderAddress\OrderAddressEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
@@ -73,10 +74,13 @@ readonly class PayloadBuilder
         ) ?? [];
 
         // 6. Build the final payload array according to Paystack API specifications.
-        // The amount is multiplied by 100 to convert from the major currency unit (e.g., Naira)
-        // to the minor unit (e.g., kobo) as expected by Paystack.
+        // The amount is converted to the minor unit (e.g., kobo) as expected by Paystack
+        // using the PaystackCurrencyHelper.
         $payload = [
-            'amount' => (int)round($orderTransaction->getAmount()->getTotalPrice() * 100),
+            'amount' => PaystackCurrencyHelper::toMinorUnit(
+                $orderTransaction->getAmount()->getTotalPrice(),
+                $currency->getIsoCode()
+            ),
             'currency' => $currency->getIsoCode(),
             'email' => $customer->getEmail(),
             'callback_url' => $returnUrl,
@@ -101,7 +105,10 @@ readonly class PayloadBuilder
                 $transactionCharge = $this->config->get('splitPaymentTransactionCharge', null, $salesChannelId);
 
                 if ($transactionCharge !== null && (int)$transactionCharge > 0) {
-                    $payload['transaction_charge'] = (int)$transactionCharge * 100;
+                    $payload['transaction_charge'] = PaystackCurrencyHelper::toMinorUnit(
+                        (float)$transactionCharge,
+                        $currency->getIsoCode()
+                    );
                 }
 
                 $bearer = $this->config->getString('paystackChargesBearer', $salesChannelId);

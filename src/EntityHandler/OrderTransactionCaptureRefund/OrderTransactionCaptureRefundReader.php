@@ -26,6 +26,7 @@ class OrderTransactionCaptureRefundReader extends AbstractEntityReader
      *
      * @param Criteria $criteria The criteria to filter the search.
      * @param Context $context The context in which the search is executed.
+     *
      * @return string|null The ID of the first matching result, or null if no result is found.
      */
     public function readIdOfOne(Criteria $criteria, Context $context): ?string

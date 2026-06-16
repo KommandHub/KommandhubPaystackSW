@@ -6,6 +6,7 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Checkout\Payment\Processor;
 
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\RefundAggregationResult;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\RefundAggregator;
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
@@ -22,6 +23,7 @@ use Shopware\Core\System\StateMachine\Aggregation\StateMachineState\StateMachine
 
 #[CoversClass(RefundAggregator::class)]
 #[UsesClass(RefundAggregationResult::class)]
+#[UsesClass(PaystackCurrencyHelper::class)]
 class RefundAggregatorTest extends TestCase
 {
     private RefundAggregator $aggregator;

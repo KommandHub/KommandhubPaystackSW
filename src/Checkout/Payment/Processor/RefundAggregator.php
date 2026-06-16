@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Checkout\Payment\Processor;
 
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
 
@@ -26,13 +27,19 @@ class RefundAggregator
     {
         $captures = [];
         $totalRefunded = 0;
-        $totalAmount = (int)round($transaction->getAmount()->getTotalPrice() * 100);
+        $totalAmount = PaystackCurrencyHelper::toMinorUnit(
+            $transaction->getAmount()->getTotalPrice(),
+            $transaction->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN'
+        );
 
         $capturesCollection = $transaction->getCaptures();
 
         if ($capturesCollection !== null) {
             foreach ($capturesCollection as $capture) {
-                $captureTotal = (int)round($capture->getAmount()->getTotalPrice() * 100);
+                $captureTotal = PaystackCurrencyHelper::toMinorUnit(
+                    $capture->getAmount()->getTotalPrice(),
+                    $transaction->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN'
+                );
                 $captureRefunded = 0;
 
                 $refundsCollection = $capture->getRefunds();
@@ -42,7 +49,10 @@ class RefundAggregator
                         if ($refund->getStateMachineState()?->getTechnicalName() === OrderTransactionCaptureRefundStates::STATE_COMPLETED
                             || $refund->getId() === $currentRefundId
                         ) {
-                            $captureRefunded += (int)round($refund->getAmount()->getTotalPrice() * 100);
+                            $captureRefunded += PaystackCurrencyHelper::toMinorUnit(
+                                $refund->getAmount()->getTotalPrice(),
+                                $transaction->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN'
+                            );
                         }
                     }
                 }

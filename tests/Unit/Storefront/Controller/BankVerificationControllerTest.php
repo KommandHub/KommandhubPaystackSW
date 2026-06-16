@@ -363,10 +363,8 @@ class BankVerificationControllerTest extends TestCase
         $bankValidationFactory = $this->createMock(BankValidationFactory::class);
         $validator = $this->createMock(DataValidator::class);
 
-        $controller = $this->getMockBuilder(BankVerificationController::class)
-            ->setConstructorArgs([$httpClient, $config, $customerRepository, $bankValidationFactory, $validator])
-            ->onlyMethods(['addFlash', 'redirectToRoute'])
-            ->getMock();
+        $controller = $this->createPartialMock(BankVerificationController::class, ['addFlash', 'redirectToRoute']);
+        $controller->__construct($httpClient, $config, $customerRepository, $bankValidationFactory, $validator);
 
         $data = new RequestDataBag([
             'bankName' => 'Test Bank',
@@ -405,10 +403,8 @@ class BankVerificationControllerTest extends TestCase
         $validator = $this->createMock(DataValidator::class);
 
         // We need a partial mock of the controller to mock addFlash and redirectToRoute
-        $controller = $this->getMockBuilder(BankVerificationController::class)
-            ->setConstructorArgs([$httpClient, $config, $customerRepository, $bankValidationFactory, $validator])
-            ->onlyMethods(['addFlash', 'redirectToRoute'])
-            ->getMock();
+        $controller = $this->createPartialMock(BankVerificationController::class, ['addFlash', 'redirectToRoute']);
+        $controller->__construct($httpClient, $config, $customerRepository, $bankValidationFactory, $validator);
 
         $data = new RequestDataBag([
             'bankName' => '', // Invalid

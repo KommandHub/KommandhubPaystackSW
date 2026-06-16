@@ -6,7 +6,9 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Service;
 
 use Kommandhub\PaystackSW\Service\Config;
 use Kommandhub\PaystackSW\Service\PayloadBuilder;
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\Aggregate\OrderAddress\OrderAddressEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerEntity;
@@ -22,6 +24,7 @@ use Shopware\Core\System\Currency\CurrencyEntity;
 use Shopware\Core\System\Country\CountryEntity;
 
 #[CoversClass(PayloadBuilder::class)]
+#[UsesClass(PaystackCurrencyHelper::class)]
 class PayloadBuilderTest extends TestCase
 {
     private Config $config;

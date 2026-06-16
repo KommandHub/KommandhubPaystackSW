@@ -7,12 +7,15 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Checkout\Payment\Processor;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionMetadataProcessor;
 use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Kommandhub\PaystackSW\Util\PaystackConstants;
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Context;
 
 #[CoversClass(TransactionMetadataProcessor::class)]
+#[UsesClass(PaystackCurrencyHelper::class)]
 class TransactionMetadataProcessorTest extends TestCase
 {
     private OrderTransactionService&MockObject $orderTransactionService;

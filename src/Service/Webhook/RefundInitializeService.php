@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Service\Webhook;
 
 use Kommandhub\PaystackSW\Util\PaystackConstants;
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
@@ -58,7 +59,11 @@ readonly class RefundInitializeService
         }
 
         $rawAmount = $data['amount'] ?? 0;
-        $refundAmount = $this->convertAmount(is_numeric($rawAmount) ? (int)$rawAmount : 0);
+        $currencyCode = $transaction->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN';
+        $refundAmount = PaystackCurrencyHelper::fromMinorUnit(
+            is_numeric($rawAmount) ? (int)$rawAmount : 0,
+            $currencyCode
+        );
 
         if (!$this->isValidRefundAmount($refundAmount, $transactionReference)) {
             return;
@@ -112,14 +117,6 @@ readonly class RefundInitializeService
         ]);
 
         return false;
-    }
-
-    /**
-     * Converts kobo to naira safely.
-     */
-    private function convertAmount(int $amountInKobo): float
-    {
-        return round($amountInKobo / 100, 2);
     }
 
     /**

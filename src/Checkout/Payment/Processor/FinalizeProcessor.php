@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Checkout\Payment\Processor;
 
 use Kommandhub\PaystackSW\Checkout\Payment\Enum\PaystackTransactionStatus;
+use Kommandhub\PaystackSW\Exceptions\PaymentException;
 use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Kommandhub\PaystackSW\Service\PaymentFinalizedEventService;
 use Psr\Log\LoggerInterface;
@@ -12,7 +13,6 @@ use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEnti
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
-use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Framework\Context;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -63,14 +63,12 @@ readonly class FinalizeProcessor
                 $orderTransaction,
                 $context
             );
-        } catch (\Throwable $e) {
-            $this->logger->error('Paystack verification failed.', [
-                'transaction_id' => $transactionId,
-                'reference' => $reference,
-                'exception' => $e->getMessage(),
-            ]);
+        } catch (PaymentException $exception) {
+            if ($exception->getErrorCode() === PaymentException::PAYMENT_VERIFICATION_PENDING) {
+                return;
+            }
 
-            throw $e;
+            throw $exception; // @codeCoverageIgnore
         }
 
         $this->metadataProcessor->persist(
@@ -87,13 +85,15 @@ readonly class FinalizeProcessor
             $statusValue = is_scalar($rawStatus) ? (string)$rawStatus : '';
         }
 
-        if ($statusValue === PaystackTransactionStatus::SUCCESS->value) {
-            if (!$this->isAlreadyPaid($orderTransaction)) {
-                $this->transactionStateHandler->paid($transactionId, $context);
-            }
-
-            $this->dispatchFinalizedEvent($orderTransaction, $transaction, $context);
+        if ($statusValue !== PaystackTransactionStatus::SUCCESS->value) {
+            return;
         }
+
+        if (!$this->isAlreadyPaid($orderTransaction)) {
+            $this->transactionStateHandler->paid($transactionId, $context);
+        }
+
+        $this->dispatchFinalizedEvent($orderTransaction, $transaction, $context);
 
         $paystackTransactionId = '';
 

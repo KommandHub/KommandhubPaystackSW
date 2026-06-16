@@ -10,6 +10,7 @@ use Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionVerificationProc
 use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Kommandhub\PaystackSW\Service\PaymentFinalizedEventService;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -17,12 +18,14 @@ use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEnti
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
-use Shopware\Core\Checkout\Payment\PaymentException;
+use Kommandhub\PaystackSW\Exceptions\PaymentException;
+use Shopware\Core\Checkout\Payment\PaymentException as ShopwarePaymentException;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineState\StateMachineStateEntity;
 use Symfony\Component\HttpFoundation\Request;
 
 #[CoversClass(FinalizeProcessor::class)]
+#[UsesClass(PaymentException::class)]
 class FinalizeProcessorTest extends TestCase
 {
     private OrderTransactionService&MockObject $orderTransactionService;
@@ -116,7 +119,7 @@ class FinalizeProcessorTest extends TestCase
             ->method('error')
             ->with('Missing Paystack reference.', $this->isType('array'));
 
-        $this->expectException(PaymentException::class);
+        $this->expectException(ShopwarePaymentException::class);
         $this->expectExceptionMessage('Payment reference is missing from request.');
 
         $this->processor->process($request, $transactionStruct, $this->context);
@@ -137,9 +140,8 @@ class FinalizeProcessorTest extends TestCase
         $this->verificationProcessor->method('verify')
             ->willThrowException(new \Exception('Verification failed'));
 
-        $this->logger->expects($this->once())
-            ->method('error')
-            ->with('Paystack verification failed.', $this->isType('array'));
+        $this->logger->expects($this->never())
+            ->method('error');
 
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Verification failed');
@@ -164,6 +166,52 @@ class FinalizeProcessorTest extends TestCase
         $this->orderTransactionService->method('readOneById')->willReturn($orderTransaction);
 
         $verificationData = ['data' => ['status' => 'success']];
+        $this->verificationProcessor->method('verify')->willReturn($verificationData);
+
+        $this->transactionStateHandler->expects($this->never())->method('paid');
+
+        $this->processor->process($request, $transactionStruct, $this->context);
+    }
+
+    public function testProcessReturnsEarlyOnPendingVerification(): void
+    {
+        $transactionId = 'test-transaction-id';
+        $reference = 'test-reference';
+        $request = new Request(['reference' => $reference]);
+
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $transactionStruct->method('getOrderTransactionId')->willReturn($transactionId);
+
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $this->orderTransactionService->method('readOneById')->willReturn($orderTransaction);
+
+        $exception = PaymentException::paymentVerificationPending();
+
+        $this->verificationProcessor->method('verify')
+            ->willThrowException($exception);
+
+        $this->metadataProcessor->expects($this->never())->method('persist');
+
+        $this->processor->process($request, $transactionStruct, $this->context);
+    }
+
+    public function testProcessReturnsEarlyOnUnsuccessfulStatus(): void
+    {
+        $transactionId = 'test-transaction-id';
+        $reference = 'test-reference';
+        $request = new Request(['reference' => $reference]);
+
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $transactionStruct->method('getOrderTransactionId')->willReturn($transactionId);
+
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $this->orderTransactionService->method('readOneById')->willReturn($orderTransaction);
+
+        $verificationData = [
+            'data' => [
+                'status' => 'failed', // Not success
+            ],
+        ];
         $this->verificationProcessor->method('verify')->willReturn($verificationData);
 
         $this->transactionStateHandler->expects($this->never())->method('paid');

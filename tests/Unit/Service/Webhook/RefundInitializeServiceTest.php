@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit\Service\Webhook;
 
 use Kommandhub\PaystackSW\Service\Webhook\RefundInitializeService;
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -22,6 +24,7 @@ use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\StateMachine\Loader\InitialStateIdLoader;
 
 #[CoversClass(RefundInitializeService::class)]
+#[UsesClass(PaystackCurrencyHelper::class)]
 class RefundInitializeServiceTest extends TestCase
 {
     private EntityRepository&MockObject $orderTransactionRepository;

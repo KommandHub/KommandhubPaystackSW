@@ -7,6 +7,7 @@ namespace Kommandhub\PaystackSW\Checkout\Payment\Processor;
 use DateTimeImmutable;
 use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Kommandhub\PaystackSW\Util\PaystackConstants;
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Shopware\Core\Framework\Context;
 
 class TransactionMetadataProcessor implements TransactionMetadataProcessorInterface
@@ -42,10 +43,16 @@ class TransactionMetadataProcessor implements TransactionMetadataProcessorInterf
                 PaystackConstants::FIELD_TRANSACTION_ID => $data['id'] ?? null,
                 PaystackConstants::FIELD_PAYMENT_TYPE => $data['channel'] ?? null,
                 PaystackConstants::FIELD_TRANSACTION_FEE => isset($data['fees']) && is_numeric($data['fees'])
-                    ? ((float)$data['fees'] / 100)
+                    ? PaystackCurrencyHelper::fromMinorUnit(
+                        (int)$data['fees'],
+                        is_scalar($data['currency'] ?? null) ? (string)$data['currency'] : 'NGN'
+                    )
                     : null,
                 PaystackConstants::FIELD_AMOUNT => isset($data['amount']) && is_numeric($data['amount'])
-                    ? ((float)$data['amount'] / 100)
+                    ? PaystackCurrencyHelper::fromMinorUnit(
+                        (int)$data['amount'],
+                        is_scalar($data['currency'] ?? null) ? (string)$data['currency'] : 'NGN'
+                    )
                     : null,
                 PaystackConstants::FIELD_CURRENCY => $data['currency'] ?? null,
                 PaystackConstants::FIELD_VERIFIED_AT => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
