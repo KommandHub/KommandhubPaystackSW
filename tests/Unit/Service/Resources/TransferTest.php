@@ -6,9 +6,11 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Service\Resources;
 
 use Kommandhub\PaystackSW\Contracts\HttpClientInterface;
 use Kommandhub\PaystackSW\Service\Resources\Transfer;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
+#[CoversClass(Transfer::class)]
 class TransferTest extends TestCase
 {
     private HttpClientInterface $httpClient;

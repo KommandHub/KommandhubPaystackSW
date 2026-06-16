@@ -8,14 +8,17 @@ use Kommandhub\PaystackSW\Event\Webhook\RefundPendingEvent;
 use Kommandhub\PaystackSW\Event\Webhook\RefundProcessedEvent;
 use Kommandhub\PaystackSW\Listener\WebhookEventListener;
 use Kommandhub\PaystackSW\Service\Webhook\RefundInitializeService;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Payment\Cart\PaymentRefundProcessor;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\IdSearchResult;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
+#[CoversClass(WebhookEventListener::class)]
+#[UsesClass(RefundInitializeService::class)]
 class WebhookEventListenerTest extends TestCase
 {
     private RefundInitializeService $refundInitializeService;
@@ -56,7 +59,10 @@ class WebhookEventListenerTest extends TestCase
     public function testOnRefundProcessedEvent(): void
     {
         $context = Context::createDefaultContext();
-        $data = ['id' => 'ref_123'];
+        $data = [
+            'id' => 'ref_123',
+            'transaction_reference' => 'T123',
+        ];
         $event = $this->createMock(RefundProcessedEvent::class);
         $event->method('getWebhookName')->willReturn('refund.processed');
         $event->method('getData')->willReturn($data);
@@ -79,7 +85,10 @@ class WebhookEventListenerTest extends TestCase
     public function testOnRefundProcessedEventInitializesIfNotFound(): void
     {
         $context = Context::createDefaultContext();
-        $data = ['id' => 'ref_123'];
+        $data = [
+            'id' => 'ref_123',
+            'transaction_reference' => 'T123',
+        ];
         $event = $this->createMock(RefundProcessedEvent::class);
         $event->method('getWebhookName')->willReturn('refund.processed');
         $event->method('getData')->willReturn($data);
@@ -102,6 +111,84 @@ class WebhookEventListenerTest extends TestCase
         $this->paymentRefundProcessor->expects($this->once())
             ->method('processRefund')
             ->with('sw_refund_123', $context);
+
+        $this->listener->onRefundProcessedEvent($event);
+    }
+
+    public function testOnRefundProcessedEventMissingTransactionReference(): void
+    {
+        $context = Context::createDefaultContext();
+        $data = ['id' => 'ref_123'];
+        $event = $this->createMock(RefundProcessedEvent::class);
+        $event->method('getData')->willReturn($data);
+        $event->method('getContext')->willReturn($context);
+
+        $this->orderTransactionCaptureRefundRepository->expects($this->never())->method('searchIds');
+        $this->paymentRefundProcessor->expects($this->never())->method('processRefund');
+
+        $this->listener->onRefundProcessedEvent($event);
+    }
+
+    public function testOnRefundProcessedEventMissingRefundId(): void
+    {
+        $context = Context::createDefaultContext();
+        $data = ['transaction_reference' => 'T123'];
+        $event = $this->createMock(RefundProcessedEvent::class);
+        $event->method('getData')->willReturn($data);
+        $event->method('getContext')->willReturn($context);
+
+        $this->orderTransactionCaptureRefundRepository->expects($this->never())->method('searchIds');
+        $this->paymentRefundProcessor->expects($this->never())->method('processRefund');
+
+        $this->listener->onRefundProcessedEvent($event);
+    }
+
+    public function testOnRefundProcessedEventNotFoundAfterInitialization(): void
+    {
+        $context = Context::createDefaultContext();
+        $data = [
+            'id' => 'ref_123',
+            'transaction_reference' => 'T123',
+        ];
+        $event = $this->createMock(RefundProcessedEvent::class);
+        $event->method('getData')->willReturn($data);
+        $event->method('getContext')->willReturn($context);
+
+        $idSearchResultNone = $this->createMock(IdSearchResult::class);
+        $idSearchResultNone->method('firstId')->willReturn(null);
+
+        $this->orderTransactionCaptureRefundRepository->expects($this->exactly(2))
+            ->method('searchIds')
+            ->willReturn($idSearchResultNone);
+
+        $this->refundInitializeService->expects($this->once())->method('handle');
+        $this->paymentRefundProcessor->expects($this->never())->method('processRefund');
+
+        $this->listener->onRefundProcessedEvent($event);
+    }
+
+    public function testOnRefundProcessedEventThrowsException(): void
+    {
+        $context = Context::createDefaultContext();
+        $data = [
+            'id' => 'ref_123',
+            'transaction_reference' => 'T123',
+        ];
+        $event = $this->createMock(RefundProcessedEvent::class);
+        $event->method('getData')->willReturn($data);
+        $event->method('getContext')->willReturn($context);
+
+        $idSearchResult = $this->createMock(IdSearchResult::class);
+        $idSearchResult->method('firstId')->willReturn('sw_refund_123');
+
+        $this->orderTransactionCaptureRefundRepository->method('searchIds')->willReturn($idSearchResult);
+
+        $this->paymentRefundProcessor->expects($this->once())
+            ->method('processRefund')
+            ->willThrowException(new \Exception('Error'));
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Error');
 
         $this->listener->onRefundProcessedEvent($event);
     }

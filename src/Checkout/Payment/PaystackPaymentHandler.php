@@ -63,7 +63,9 @@ final class PaystackPaymentHandler extends AbstractPaystackPaymentHandler
     /**
      * @param RefundPaymentTransactionStruct $transaction
      * @param Context $context
+     *
      * @return void
+     *
      * @throws \Throwable
      */
     public function refund(RefundPaymentTransactionStruct $transaction, Context $context): void

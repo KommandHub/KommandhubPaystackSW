@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit\Service;
 
 use Kommandhub\PaystackSW\Service\Config;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 
+#[CoversClass(Config::class)]
 class ConfigTest extends TestCase
 {
     private SystemConfigService $systemConfigService;

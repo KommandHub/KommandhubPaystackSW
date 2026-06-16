@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit;
 
 use Kommandhub\PaystackSW\KommandhubPaystackSW;
+use Kommandhub\PaystackSW\Service\CustomFieldsInstaller;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\ActivateContext;
@@ -16,6 +19,8 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\IdSearchResult;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
 
+#[CoversClass(KommandhubPaystackSW::class)]
+#[UsesClass(CustomFieldsInstaller::class)]
 class KommandhubPaystackSWTest extends TestCase
 {
     private KommandhubPaystackSW $plugin;

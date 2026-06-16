@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Integration\Storefront\Controller;
 
 use Kommandhub\PaystackSW\Service\Config;
+use Kommandhub\PaystackSW\Service\Webhook\WebhookEventFactory;
 use Kommandhub\PaystackSW\Service\Webhook\WebhookProcessor;
 use Kommandhub\PaystackSW\Storefront\Controller\WebhookController;
 use Kommandhub\PaystackSW\Service\Webhook\WebhookSignatureValidator;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Framework\Context;
@@ -15,6 +18,9 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+#[CoversClass(WebhookController::class)]
+#[UsesClass(WebhookProcessor::class)]
+#[UsesClass(WebhookSignatureValidator::class)]
 class WebhookControllerTest extends TestCase
 {
     private Config $config;
@@ -22,6 +28,7 @@ class WebhookControllerTest extends TestCase
     private WebhookSignatureValidator $signatureValidator;
     private EventDispatcherInterface $eventDispatcher;
     private LoggerInterface $logger;
+    private WebhookEventFactory $eventFactory;
     private WebhookController $controller;
 
     protected function setUp(): void
@@ -30,11 +37,13 @@ class WebhookControllerTest extends TestCase
         $this->signatureValidator = new WebhookSignatureValidator($this->config);
         $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
+        $this->eventFactory = $this->createMock(WebhookEventFactory::class);
 
         $this->webhookProcessor = new WebhookProcessor(
             $this->signatureValidator,
             $this->eventDispatcher,
-            $this->logger
+            $this->logger,
+            $this->eventFactory
         );
 
         $this->controller = new WebhookController(
@@ -73,11 +82,80 @@ class WebhookControllerTest extends TestCase
         $this->config->method('getBool')->with('enableSandbox')->willReturn(true);
         $this->config->method('getString')->with('apiSecretKeySandbox')->willReturn($secret);
 
+        $this->eventFactory->method('create')
+            ->willReturn($this->createMock(\Kommandhub\PaystackSW\Event\Webhook\ChargeSuccessEvent::class));
+
         $this->eventDispatcher->expects($this->once())
             ->method('dispatch');
 
         $response = $this->controller->execute($request, $context);
 
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+    }
+
+    public function testWebhookRequestWithInvalidSignature(): void
+    {
+        $request = new Request([], [], [], [], [], [], '{}');
+        $request->setMethod('POST');
+        $request->headers->set('x-paystack-signature', 'invalid-signature');
+        $context = Context::createDefaultContext();
+
+        $this->config->method('getBool')->willReturn(false);
+        $this->config->method('getString')->willReturn('secret');
+
+        $this->logger->expects($this->once())
+            ->method('warning')
+            ->with($this->stringContains('signature validation failed'));
+
+        $response = $this->controller->execute($request, $context);
+
+        $this->assertEquals(Response::HTTP_FORBIDDEN, $response->getStatusCode());
+    }
+
+    public function testWebhookRequestWithInvalidPayload(): void
+    {
+        $secret = 'secret';
+        $payload = 'invalid-json';
+        $signature = hash_hmac('sha512', $payload, $secret);
+
+        $request = new Request([], [], [], [], [], [], $payload);
+        $request->setMethod('POST');
+        $request->headers->set('x-paystack-signature', $signature);
+        $context = Context::createDefaultContext();
+
+        $this->config->method('getBool')->willReturn(false);
+        $this->config->method('getString')->willReturn($secret);
+
+        $this->logger->expects($this->once())
+            ->method('warning')
+            ->with($this->stringContains('Invalid webhook payload'));
+
+        $response = $this->controller->execute($request, $context);
+
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+    }
+
+    public function testWebhookRequestWithUnexpectedError(): void
+    {
+        $request = $this->createMock(Request::class);
+        $context = Context::createDefaultContext();
+
+        // Use a mock for WebhookProcessor to throw a generic exception
+        $webhookProcessor = $this->createMock(WebhookProcessor::class);
+        $webhookProcessor->method('process')
+            ->willThrowException(new \Exception('Unexpected error'));
+
+        $controller = new WebhookController(
+            $webhookProcessor,
+            $this->logger
+        );
+
+        $this->logger->expects($this->once())
+            ->method('error')
+            ->with($this->stringContains('Webhook processing failed'));
+
+        $response = $controller->execute($request, $context);
+
+        $this->assertEquals(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
     }
 }

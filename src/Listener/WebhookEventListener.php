@@ -42,6 +42,7 @@ final readonly class WebhookEventListener
     /**
      * Finalizes a previously initialized refund once Paystack
      * confirms the refund has been processed.
+     *
      * @throws \Throwable
      */
     #[AsEventListener(RefundProcessedEvent::class)]
@@ -51,13 +52,13 @@ final readonly class WebhookEventListener
         $data = $event->getData();
         $context = $event->getContext();
 
-        $transactionReference = (string) ($data['transaction_reference'] ?? '');
+        $transactionReference = (string)($data['transaction_reference'] ?? '');
 
         if ($transactionReference === '') {
             return;
         }
 
-        $refundId = (string) ($data['id'] ?? '');
+        $refundId = (string)($data['id'] ?? '');
 
         if ($refundId === '') {
             return;

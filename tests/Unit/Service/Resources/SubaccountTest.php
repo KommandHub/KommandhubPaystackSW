@@ -6,9 +6,11 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Service\Resources;
 
 use Kommandhub\PaystackSW\Contracts\HttpClientInterface;
 use Kommandhub\PaystackSW\Service\Resources\Subaccount;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
+#[CoversClass(Subaccount::class)]
 class SubaccountTest extends TestCase
 {
     private HttpClientInterface $httpClient;

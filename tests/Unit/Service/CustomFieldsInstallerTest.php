@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit\Service;
 
 use Kommandhub\PaystackSW\Service\CustomFieldsInstaller;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\IdSearchResult;
 
+#[CoversClass(CustomFieldsInstaller::class)]
 class CustomFieldsInstallerTest extends TestCase
 {
     private EntityRepository $customFieldSetRepository;

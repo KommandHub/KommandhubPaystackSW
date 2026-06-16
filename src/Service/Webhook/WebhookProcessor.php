@@ -24,18 +24,20 @@ class WebhookProcessor
     {
         $this->signatureValidator->validate($request);
 
-        $payload = json_decode((string) $request->getContent(), true);
-        if (!$payload || !isset($payload['event'], $payload['data'])) {
+        $payload = json_decode((string)$request->getContent(), true);
+
+        if (!is_array($payload) || !isset($payload['event']) || !isset($payload['data'])) {
             throw new BadRequestHttpException('Invalid webhook payload.');
         }
 
-        $eventName = (string) $payload['event'];
-        $data = (array) $payload['data'];
+        $eventName = is_scalar($payload['event']) ? (string)$payload['event'] : '';
+        $data = is_array($payload['data']) ? $payload['data'] : [];
 
         $event = $this->eventFactory->create($eventName, $data, $context);
 
         if ($event === null) {
             $this->logger->info(sprintf('[Paystack] Unhandled webhook event: %s', $eventName));
+
             return;
         }
 

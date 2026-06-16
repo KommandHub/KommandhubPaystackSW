@@ -7,6 +7,8 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Storefront\Controller;
 use Kommandhub\PaystackSW\Service\Config;
 use Kommandhub\PaystackSW\Storefront\Controller\BankVerificationController;
 use Kommandhub\PaystackSW\Storefront\Validation\BankValidationFactory;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Framework\Context;
@@ -20,6 +22,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
+#[CoversClass(BankVerificationController::class)]
+#[UsesClass(BankValidationFactory::class)]
 class BankVerificationControllerTest extends TestCase
 {
     public function testGetBanksReturnsBanks(): void

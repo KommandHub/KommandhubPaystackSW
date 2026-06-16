@@ -38,8 +38,10 @@ class BankValidationFactory implements DataValidationFactoryInterface
             ->add('accountName', new NotBlank());
 
         if ($this->config->getBool('showBvnField', $context->getSalesChannelId())) {
+            $definition->add('bvn', new Length(['min' => 11, 'max' => 11]));
+
             if ($this->config->getBool('requireBvn', $context->getSalesChannelId())) {
-                $definition->add('bvn', new NotBlank(), new Length(['min' => 11, 'max' => 11]));
+                $definition->add('bvn', new NotBlank());
             }
         }
 

@@ -15,6 +15,7 @@ final readonly class RefundAggregationResult
      */
     public function __construct(
         public array $captures,
-        public bool  $isFullyRefunded,
-    ) {}
+        public bool $isFullyRefunded,
+    ) {
+    }
 }

@@ -7,8 +7,10 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Service;
 use Kommandhub\PaystackSW\Service\Paystack;
 use Kommandhub\PaystackSW\Service\Resources\Transaction;
 use Kommandhub\PaystackSW\Service\TransactionService;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
+#[CoversClass(TransactionService::class)]
 class TransactionServiceTest extends TestCase
 {
     private Paystack $paystack;

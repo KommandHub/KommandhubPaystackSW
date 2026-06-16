@@ -10,15 +10,13 @@ use Kommandhub\PaystackSW\Service\PaymentFinalizedEventService;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
-use Shopware\Core\Checkout\Order\OrderException;
-use Shopware\Core\Checkout\Order\OrderStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Framework\Context;
 use Symfony\Component\HttpFoundation\Request;
 
-final readonly class FinalizeProcessor
+readonly class FinalizeProcessor
 {
     /**
      * @param OrderTransactionService $orderTransactionService
@@ -82,7 +80,12 @@ final readonly class FinalizeProcessor
             $context
         );
 
-        $statusValue = $verification['data']['status'] ?? null;
+        $statusValue = '';
+
+        if (isset($verification['data']) && is_array($verification['data'])) {
+            $rawStatus = $verification['data']['status'] ?? '';
+            $statusValue = is_scalar($rawStatus) ? (string)$rawStatus : '';
+        }
 
         if ($statusValue === PaystackTransactionStatus::SUCCESS->value) {
             if (!$this->isAlreadyPaid($orderTransaction)) {
@@ -92,10 +95,17 @@ final readonly class FinalizeProcessor
             $this->dispatchFinalizedEvent($orderTransaction, $transaction, $context);
         }
 
+        $paystackTransactionId = '';
+
+        if (isset($verification['data']) && is_array($verification['data'])) {
+            $rawId = $verification['data']['id'] ?? '';
+            $paystackTransactionId = is_scalar($rawId) ? (string)$rawId : '';
+        }
+
         $this->logger->info('Paystack payment finalized.', [
             'transaction_id' => $transactionId,
             'reference' => $reference,
-            'paystack_transaction_id' => $verification['data']['id'] ?? null,
+            'paystack_transaction_id' => $paystackTransactionId,
             'status' => $statusValue,
         ]);
     }

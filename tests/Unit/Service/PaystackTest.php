@@ -6,6 +6,7 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Service;
 
 use Kommandhub\PaystackSW\Contracts\HttpClientInterface;
 use Kommandhub\PaystackSW\Service\Paystack;
+use Kommandhub\PaystackSW\Service\Resources\ApiResource;
 use Kommandhub\PaystackSW\Service\Resources\Customer;
 use Kommandhub\PaystackSW\Service\Resources\Miscellaneous;
 use Kommandhub\PaystackSW\Service\Resources\Plan;
@@ -17,8 +18,12 @@ use Kommandhub\PaystackSW\Service\Resources\Subscription;
 use Kommandhub\PaystackSW\Service\Resources\Transaction;
 use Kommandhub\PaystackSW\Service\Resources\Transfer;
 use Kommandhub\PaystackSW\Service\Resources\Verification;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 
+#[CoversClass(Paystack::class)]
+#[UsesClass(ApiResource::class)]
 class PaystackTest extends TestCase
 {
     private HttpClientInterface $httpClient;

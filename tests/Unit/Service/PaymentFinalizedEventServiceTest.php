@@ -6,6 +6,7 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Service;
 
 use Kommandhub\PaystackSW\Event\PaystackPaymentFinalizedEvent;
 use Kommandhub\PaystackSW\Service\PaymentFinalizedEventService;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -13,6 +14,7 @@ use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Framework\Context;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
+#[CoversClass(PaymentFinalizedEventService::class)]
 class PaymentFinalizedEventServiceTest extends TestCase
 {
     public function testFireEvent(): void

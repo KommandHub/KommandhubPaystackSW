@@ -6,9 +6,11 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Service\Resources;
 
 use Kommandhub\PaystackSW\Contracts\HttpClientInterface;
 use Kommandhub\PaystackSW\Service\Resources\Subscription;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
+#[CoversClass(Subscription::class)]
 class SubscriptionTest extends TestCase
 {
     private HttpClientInterface $httpClient;

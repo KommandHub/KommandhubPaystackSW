@@ -7,10 +7,12 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Service\Http;
 use Kommandhub\PaystackSW\Exceptions\PaystackException;
 use Kommandhub\PaystackSW\Service\Config;
 use Kommandhub\PaystackSW\Service\Http\PaystackHttpClient;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface as SymfonyHttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
+#[CoversClass(PaystackHttpClient::class)]
 class PaystackHttpClientTest extends TestCase
 {
     private Config $config;

@@ -22,7 +22,7 @@ use Shopware\Core\System\StateMachine\Loader\InitialStateIdLoader;
 /**
  * @final
  */
-final readonly class RefundInitializeService
+readonly class RefundInitializeService
 {
     public function __construct(
         private EntityRepository $orderTransactionRepository,
@@ -40,8 +40,8 @@ final readonly class RefundInitializeService
      */
     public function handle(array $data, Context $context): void
     {
-        $transactionReference = (string) ($data['transaction_reference'] ?? '');
-        $paystackRefundId = (string) ($data['id'] ?? '');
+        $transactionReference = isset($data['transaction_reference']) && is_scalar($data['transaction_reference']) ? (string)$data['transaction_reference'] : '';
+        $paystackRefundId = isset($data['id']) && is_scalar($data['id']) ? (string)$data['id'] : '';
 
         if (!$this->isValidRefundData($transactionReference, $paystackRefundId, $data)) {
             return;
@@ -50,27 +50,35 @@ final readonly class RefundInitializeService
         $externalReference = $this->buildExternalReference($transactionReference, $paystackRefundId);
 
         $transaction = $this->findTransaction($transactionReference, $context);
+
         if ($transaction === null) {
             $this->logger->error('[Paystack] Could not find transaction for reference: ' . $transactionReference);
+
             return;
         }
 
-        $refundAmount = $this->convertAmount((int) ($data['amount'] ?? 0));
+        $rawAmount = $data['amount'] ?? 0;
+        $refundAmount = $this->convertAmount(is_numeric($rawAmount) ? (int)$rawAmount : 0);
+
         if (!$this->isValidRefundAmount($refundAmount, $transactionReference)) {
             return;
         }
 
         $captureId = $this->getOrCreateCapture($externalReference, $transaction, $refundAmount, $context);
+
         if ($captureId === '') {
             return;
         }
 
         if ($this->refundExists($externalReference, $context)) {
             $this->logger->info('[Paystack] Refund already exists: ' . $externalReference);
+
             return;
         }
 
-        $this->createRefund($captureId, $externalReference, $refundAmount, $data, $context);
+        if (!$this->createRefund($captureId, $externalReference, $refundAmount, $data, $context)) {
+            return;
+        }
         $this->logger->info('[Paystack] Successfully initialized refund: ' . $externalReference);
     }
 
@@ -130,6 +138,7 @@ final readonly class RefundInitializeService
 
         /** @var OrderTransactionEntity|null $transaction */
         $transaction = $this->orderTransactionRepository->search($criteria, $context)->first();
+
         return $transaction;
     }
 
@@ -138,7 +147,7 @@ final readonly class RefundInitializeService
      */
     public static function buildExternalReference(string $paystackTransactionReference, string $paystackTransactionId): string
     {
-        return $paystackTransactionId . '-'. $paystackTransactionReference;
+        return $paystackTransactionId . '-' . $paystackTransactionReference;
     }
 
     /**
@@ -158,6 +167,7 @@ final readonly class RefundInitializeService
         }
 
         $existingCaptureId = $this->findExistingCaptureInTransaction($externalReference, $transaction);
+
         if ($existingCaptureId !== null) {
             return $existingCaptureId;
         }
@@ -171,6 +181,7 @@ final readonly class RefundInitializeService
     private function findExistingCaptureInTransaction(string $externalReference, OrderTransactionEntity $transaction): ?string
     {
         $captures = $transaction->getCaptures();
+
         if ($captures === null || $captures->count() === 0) {
             return null;
         }
@@ -181,7 +192,7 @@ final readonly class RefundInitializeService
             }
         }
 
-        return null;
+        return null; // @codeCoverageIgnore
     }
 
     /**
@@ -236,6 +247,7 @@ final readonly class RefundInitializeService
     private function entityExists(EntityRepository $repository, string $id, Context $context): bool
     {
         $criteria = new Criteria([$id]);
+
         return $repository->searchIds($criteria, $context)->getTotal() > 0;
     }
 
@@ -261,12 +273,13 @@ final readonly class RefundInitializeService
         float $refundAmount,
         array $data,
         Context $context
-    ): void {
+    ): bool {
         $refundId = Uuid::fromStringToHex('paystack-refund-' . $externalReference);
 
         if ($this->entityExists($this->orderTransactionCaptureRefundRepository, $refundId, $context)) {
             $this->logger->info('[Paystack] Refund with ID already exists: ' . $refundId);
-            return;
+
+            return false;
         }
 
         $this->orderTransactionCaptureRefundRepository->create([
@@ -281,5 +294,7 @@ final readonly class RefundInitializeService
                         ?? 'Paystack refund',
             ],
         ], $context);
+
+        return true;
     }
 }

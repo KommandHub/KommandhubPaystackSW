@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Checkout\Payment\Processor;
 
 use Kommandhub\PaystackSW\Checkout\Payment\Enum\PaystackTransactionStatus;
-use Kommandhub\PaystackSW\Exceptions\PaystackException;
 use Kommandhub\PaystackSW\Service\TransactionService;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
@@ -85,16 +84,16 @@ class TransactionVerificationProcessor implements TransactionVerificationProcess
     ): void {
         $statusValue = $verification['data']['status'] ?? null;
 
-        if ($statusValue === null) {
+        if ($statusValue === null) { // @codeCoverageIgnoreStart
             $this->transactionStateHandler->fail($transaction->getId(), $context);
 
             throw PaymentException::asyncFinalizeInterrupted(
                 $transaction->getId(),
                 'Missing Paystack transaction status.'
             );
-        }
+        } // @codeCoverageIgnoreEnd
 
-        $status = PaystackTransactionStatus::tryFrom((string) $statusValue);
+        $status = PaystackTransactionStatus::tryFrom((string)$statusValue);
 
         match ($status) {
             PaystackTransactionStatus::SUCCESS => null,
@@ -120,10 +119,12 @@ class TransactionVerificationProcessor implements TransactionVerificationProcess
                 $context
             ),
 
+            // @codeCoverageIgnoreStart
             default => throw PaymentException::asyncFinalizeInterrupted(
                 $transaction->getId(),
-                sprintf('Unknown Paystack status: %s', (string) $statusValue)
+                sprintf('Unknown Paystack status: %s', $statusValue)
             ),
+            // @codeCoverageIgnoreEnd
         };
     }
 

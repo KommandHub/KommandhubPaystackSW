@@ -22,6 +22,7 @@ class WebhookSignatureValidator
     public function validate(Request $request): void
     {
         $signature = $request->headers->get('x-paystack-signature');
+
         if (!$signature) {
             throw new AccessDeniedHttpException('Missing Paystack signature header.');
         }

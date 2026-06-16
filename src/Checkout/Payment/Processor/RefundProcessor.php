@@ -21,16 +21,17 @@ use Shopware\Core\Framework\Context;
 /**
  * @final
  */
-final readonly class RefundProcessor
+readonly class RefundProcessor
 {
     public function __construct(
-        private OrderTransactionService                   $orderTransactionService,
+        private OrderTransactionService $orderTransactionService,
         private OrderTransactionCaptureRefundStateHandler $refundStateHandler,
-        private OrderTransactionCaptureStateHandler       $captureStateHandler,
-        private OrderTransactionStateHandler              $transactionStateHandler,
-        private RefundAggregator                          $aggregator,
-        private Connection                                $connection
-    ) {}
+        private OrderTransactionCaptureStateHandler $captureStateHandler,
+        private OrderTransactionStateHandler $transactionStateHandler,
+        private RefundAggregator $aggregator,
+        private Connection $connection
+    ) {
+    }
 
     /**
      * Processes a refund by updating the states of the refund, its associated capture,
@@ -44,7 +45,7 @@ final readonly class RefundProcessor
     public function process(RefundPaymentTransactionStruct $transaction, Context $context): void
     {
         $orderTransactionId = $transaction->getOrderTransactionId();
-        $refundId = $transaction->getVars()['refundId'] ?? null;
+        $refundId = $transaction->getRefundId();
 
         if (!$refundId) {
             throw PaymentException::refundInterrupted(
@@ -73,16 +74,23 @@ final readonly class RefundProcessor
             if ($refund->getStateMachineState()?->getTechnicalName() === OrderTransactionCaptureRefundStates::STATE_FAILED) {
                 $this->refundStateHandler->reopen($refund->getId(), $context);
             }
+
             $this->refundStateHandler->complete($refund->getId(), $context);
 
             $result = $this->aggregator->aggregate($orderTransaction, $refund->getId());
 
-            foreach ($result->captures as $captureId => $capture) {
-                if ($capture->isFullyRefunded) {
-                    $captureEntity = $orderTransaction->getCaptures()->get($captureId);
+            /** @var array<string, \stdClass&object{isFullyRefunded: bool}> $capturesData */
+            $capturesData = $result->captures;
+
+            foreach ($capturesData as $captureId => $captureData) {
+                if ($captureData->isFullyRefunded) {
+                    $captures = $orderTransaction->getCaptures();
+                    $captureEntity = $captures?->get($captureId);
+
                     if ($captureEntity && $captureEntity->getStateMachineState()?->getTechnicalName() === OrderTransactionCaptureStates::STATE_FAILED) {
                         $this->captureStateHandler->reopen($captureId, $context);
                     }
+
                     $this->captureStateHandler->complete($captureId, $context);
                 }
             }
@@ -109,8 +117,20 @@ final readonly class RefundProcessor
      */
     private function findRefund(OrderTransactionEntity $orderTransaction, string $refundId): ?OrderTransactionCaptureRefundEntity
     {
-        foreach ($orderTransaction->getCaptures() as $capture) {
-            foreach ($capture->getRefunds() as $refund) {
+        $captures = $orderTransaction->getCaptures();
+
+        if ($captures === null) {
+            return null; // @codeCoverageIgnore
+        }
+
+        foreach ($captures as $capture) {
+            $refunds = $capture->getRefunds();
+
+            if ($refunds === null) {
+                continue; // @codeCoverageIgnore
+            }
+
+            foreach ($refunds as $refund) {
                 if ($refund->getId() === $refundId) {
                     return $refund;
                 }

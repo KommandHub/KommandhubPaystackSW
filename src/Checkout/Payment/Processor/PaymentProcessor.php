@@ -14,7 +14,7 @@ use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Framework\Context;
 
-final readonly class PaymentProcessor
+readonly class PaymentProcessor
 {
     /**
      * @param OrderTransactionService $orderTransactionService

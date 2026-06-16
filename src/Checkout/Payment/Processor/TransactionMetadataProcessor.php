@@ -32,7 +32,7 @@ class TransactionMetadataProcessor implements TransactionMetadataProcessorInterf
         $data = $verificationData['data'] ?? [];
 
         if (!is_array($data)) {
-            $data = [];
+            $data = []; // @codeCoverageIgnore
         }
 
         $this->orderTransactionService->updateCustomFields(

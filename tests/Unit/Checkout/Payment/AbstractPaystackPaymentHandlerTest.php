@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit\Checkout\Payment;
 
 use Kommandhub\PaystackSW\Checkout\Payment\AbstractPaystackPaymentHandler;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\PaymentHandlerType;
 use Shopware\Core\Framework\Context;
 
+#[CoversClass(AbstractPaystackPaymentHandler::class)]
 class AbstractPaystackPaymentHandlerTest extends TestCase
 {
     public function testSupportsReturnsFalse(): void

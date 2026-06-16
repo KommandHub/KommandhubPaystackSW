@@ -10,7 +10,7 @@ use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTr
 /**
  * @final
  */
-final class RefundAggregator
+class RefundAggregator
 {
     /**
      * Aggregates refund data for an order transaction.
@@ -26,25 +26,33 @@ final class RefundAggregator
     {
         $captures = [];
         $totalRefunded = 0;
-        $totalAmount = (int) round($transaction->getAmount()->getTotalPrice() * 100);
+        $totalAmount = (int)round($transaction->getAmount()->getTotalPrice() * 100);
 
-        foreach ($transaction->getCaptures() as $capture) {
-            $captureTotal = (int) round($capture->getAmount()->getTotalPrice() * 100);
-            $captureRefunded = 0;
+        $capturesCollection = $transaction->getCaptures();
 
-            foreach ($capture->getRefunds() as $refund) {
-                if ($refund->getStateMachineState()?->getTechnicalName() === OrderTransactionCaptureRefundStates::STATE_COMPLETED
-                    || $refund->getId() === $currentRefundId
-                ) {
-                    $captureRefunded += (int) round($refund->getAmount()->getTotalPrice() * 100);
+        if ($capturesCollection !== null) {
+            foreach ($capturesCollection as $capture) {
+                $captureTotal = (int)round($capture->getAmount()->getTotalPrice() * 100);
+                $captureRefunded = 0;
+
+                $refundsCollection = $capture->getRefunds();
+
+                if ($refundsCollection !== null) {
+                    foreach ($refundsCollection as $refund) {
+                        if ($refund->getStateMachineState()?->getTechnicalName() === OrderTransactionCaptureRefundStates::STATE_COMPLETED
+                            || $refund->getId() === $currentRefundId
+                        ) {
+                            $captureRefunded += (int)round($refund->getAmount()->getTotalPrice() * 100);
+                        }
+                    }
                 }
+
+                $captures[$capture->getId()] = (object)[
+                    'isFullyRefunded' => $captureRefunded >= $captureTotal,
+                ];
+
+                $totalRefunded += $captureRefunded;
             }
-
-            $captures[$capture->getId()] = (object)[
-                'isFullyRefunded' => $captureRefunded >= $captureTotal,
-            ];
-
-            $totalRefunded += $captureRefunded;
         }
 
         return new RefundAggregationResult(

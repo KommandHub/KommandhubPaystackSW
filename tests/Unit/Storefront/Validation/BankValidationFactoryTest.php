@@ -6,19 +6,27 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Storefront\Validation;
 
 use Kommandhub\PaystackSW\Service\Config;
 use Kommandhub\PaystackSW\Storefront\Validation\BankValidationFactory;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\NotBlank;
 
+#[CoversClass(BankValidationFactory::class)]
 class BankValidationFactoryTest extends TestCase
 {
     public function testCreateReturnsCorrectDefinitionWhenBvnIsShownAndOptional(): void
     {
         $config = $this->createMock(Config::class);
-        $config->method('getBool')->willReturnCallback(function($key, $salesChannelId) {
-            if ($key === 'showBvnField') return true;
-            if ($key === 'requireBvn') return false;
+        $config->method('getBool')->willReturnCallback(function ($key, $salesChannelId) {
+            if ($key === 'showBvnField') {
+                return true;
+            }
+
+            if ($key === 'requireBvn') {
+                return false;
+            }
+
             return false;
         });
 
@@ -39,9 +47,15 @@ class BankValidationFactoryTest extends TestCase
     public function testCreateReturnsCorrectDefinitionWhenBvnIsShownAndRequired(): void
     {
         $config = $this->createMock(Config::class);
-        $config->method('getBool')->willReturnCallback(function($key, $salesChannelId) {
-            if ($key === 'showBvnField') return true;
-            if ($key === 'requireBvn') return true;
+        $config->method('getBool')->willReturnCallback(function ($key, $salesChannelId) {
+            if ($key === 'showBvnField') {
+                return true;
+            }
+
+            if ($key === 'requireBvn') {
+                return true;
+            }
+
             return false;
         });
 

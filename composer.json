@@ -1,6 +1,6 @@
 {
     "name": "kommandhub/paystack-sw",
-    "description": "Integrates the Paystack payment gateway into Shopware 6.",
+    "description": "Integrate the Paystack payment gateway into Shopware 6 to accept secure payments via credit cards, bank transfers, and mobile money. Expand your business across Africa with ease.",
     "type": "shopware-platform-plugin",
     "version": "1.0.0",
     "license": "MIT",
@@ -47,14 +47,14 @@
     "extra": {
         "shopware-plugin-class": "Kommandhub\\PaystackSW\\KommandhubPaystackSW",
         "label": {
-            "de-DE": "Paystack für Shopware",
-            "en-GB": "Paystack for Shopware",
-            "fr-FR": "Paystack pour Shopware"
+            "de-DE": "Paystack Zahlung",
+            "en-GB": "Paystack Payment",
+            "fr-FR": "Paystack Paiement"
         },
         "description": {
-            "de-DE": "Integriert die Paystack-Zahlungs-Gateway in Shopware 6.",
-            "en-GB": "Integrates the Paystack payment gateway into Shopware 6.",
-            "fr-FR": "Intègre la passerelle de paiement Paystack dans Shopware 6."
+            "de-DE": "Integrieren Sie das Paystack-Zahlungsgateway nahtlos in Shopware 6. Ermöglichen Sie Ihren Kunden sichere Zahlungen per Kreditkarte, Banküberweisung und Mobile Money in ganz Afrika.",
+            "en-GB": "Integrate the Paystack payment gateway into Shopware 6 to accept secure payments via credit cards, bank transfers, and mobile money. Expand your business across Africa with ease.",
+            "fr-FR": "Intégrez Paystack à Shopware 6 pour accepter des paiements sécurisés par carte, virement et mobile money. Développez votre activité en Afrique avec cette solution de paiement fiable."
         },
         "manufacturerLink": {
             "de-DE": "https://kommandhub.com",
