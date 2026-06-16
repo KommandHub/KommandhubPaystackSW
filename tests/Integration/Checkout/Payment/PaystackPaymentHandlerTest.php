@@ -9,7 +9,7 @@ use Kommandhub\PaystackSW\Checkout\Payment\Processor\FinalizeProcessor;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\PaymentProcessor;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\RefundProcessor;
 use Kommandhub\PaystackSW\Checkout\Payment\Struct\PaystackInitializationResponse;
-use Kommandhub\PaystackSW\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
@@ -103,7 +103,7 @@ class PaystackPaymentHandlerTest extends TestCase
         $orderTransaction = $this->createMock(\Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity::class);
 
         $this->orderTransactionService->expects($this->once())
-            ->method('get')
+            ->method('readOneById')
             ->with($transactionId, $context)
             ->willReturn($orderTransaction);
 

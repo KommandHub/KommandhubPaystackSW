@@ -6,7 +6,7 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Service;
 
 use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionReader;
 use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionWriter;
-use Kommandhub\PaystackSW\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
@@ -33,7 +33,7 @@ class OrderTransactionServiceTest extends TestCase
         $transaction = $this->createMock(OrderTransactionEntity::class);
         $this->reader->method('readOneById')->willReturn($transaction);
 
-        $result = $this->service->get('id', $context);
+        $result = $this->service->readOneById('id', $context);
         $this->assertSame($transaction, $result);
     }
 
@@ -43,7 +43,7 @@ class OrderTransactionServiceTest extends TestCase
         $this->reader->method('readOneById')->willReturn(null);
 
         $this->expectException(PaymentException::class);
-        $this->service->get('id', $context);
+        $this->service->readOneById('id', $context);
     }
 
     public function testUpdateCustomFields(): void

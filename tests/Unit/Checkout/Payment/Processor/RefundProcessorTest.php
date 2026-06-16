@@ -8,7 +8,7 @@ use Doctrine\DBAL\Connection;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\RefundAggregationResult;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\RefundAggregator;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\RefundProcessor;
-use Kommandhub\PaystackSW\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -108,7 +108,7 @@ class RefundProcessorTest extends TestCase
             ->willReturn($transactionState);
 
         $this->orderTransactionService->expects($this->once())
-            ->method('get')
+            ->method('readOneById')
             ->with($orderTransactionId, $this->context)
             ->willReturn($orderTransaction);
 
@@ -161,7 +161,7 @@ class RefundProcessorTest extends TestCase
 
         $this->orderTransactionService
             ->expects($this->never())
-            ->method('get');
+            ->method('readOneById');
 
         $this->expectException(PaymentException::class);
         $this->expectExceptionMessage('Missing refund identifier.');
@@ -185,7 +185,7 @@ class RefundProcessorTest extends TestCase
             ->willReturn(new OrderTransactionCaptureCollection());
 
         $this->orderTransactionService->expects($this->once())
-            ->method('get')
+            ->method('readOneById')
             ->with($orderTransactionId, $this->context)
             ->willReturn($orderTransaction);
 
@@ -235,7 +235,7 @@ class RefundProcessorTest extends TestCase
         $orderTransaction->method('getStateMachineState')->willReturn($transactionState);
 
         $this->orderTransactionService->expects($this->any())
-            ->method('get')
+            ->method('readOneById')
             ->with($orderTransactionId, $this->context)
             ->willReturn($orderTransaction);
 

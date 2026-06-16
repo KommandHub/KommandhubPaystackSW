@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Checkout\Payment\Processor;
 
 use Doctrine\DBAL\Connection;
-use Kommandhub\PaystackSW\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
@@ -54,7 +54,7 @@ readonly class RefundProcessor
             );
         }
 
-        $orderTransaction = $this->orderTransactionService->get($orderTransactionId, $context);
+        $orderTransaction = $this->orderTransactionService->readOneById($orderTransactionId, $context);
 
         $refund = $this->findRefund($orderTransaction, $refundId);
 

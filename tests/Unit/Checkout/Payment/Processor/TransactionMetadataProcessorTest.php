@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit\Checkout\Payment\Processor;
 
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionMetadataProcessor;
-use Kommandhub\PaystackSW\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Kommandhub\PaystackSW\Util\PaystackConstants;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\MockObject\MockObject;

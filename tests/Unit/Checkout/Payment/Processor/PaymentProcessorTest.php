@@ -7,7 +7,7 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Checkout\Payment\Processor;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\PaymentProcessor;
 use Kommandhub\PaystackSW\Checkout\Payment\Struct\PaystackInitializationResponse;
 use Kommandhub\PaystackSW\Exceptions\PaystackException;
-use Kommandhub\PaystackSW\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Kommandhub\PaystackSW\Service\PayloadBuilder;
 use Kommandhub\PaystackSW\Service\TransactionService;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -55,7 +55,7 @@ class PaymentProcessorTest extends TestCase
 
         $orderTransaction = $this->createMock(OrderTransactionEntity::class);
         $this->orderTransactionService->expects($this->once())
-            ->method('get')
+            ->method('readOneById')
             ->with($transactionId, $this->context)
             ->willReturn($orderTransaction);
 
@@ -93,7 +93,7 @@ class PaymentProcessorTest extends TestCase
         $transactionStruct->method('getOrderTransactionId')->willReturn($transactionId);
 
         $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $this->orderTransactionService->method('get')->willReturn($orderTransaction);
+        $this->orderTransactionService->method('readOneById')->willReturn($orderTransaction);
 
         $this->payloadBuilder->method('build')->willThrowException(new \RuntimeException('Build failed'));
 
@@ -114,7 +114,7 @@ class PaymentProcessorTest extends TestCase
         $transactionStruct->method('getOrderTransactionId')->willReturn($transactionId);
 
         $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $this->orderTransactionService->method('get')->willReturn($orderTransaction);
+        $this->orderTransactionService->method('readOneById')->willReturn($orderTransaction);
 
         $this->payloadBuilder->method('build')->willReturn([]);
         $this->transactionService->method('initialize')->willThrowException(new PaystackException('Communication failed'));
@@ -135,7 +135,7 @@ class PaymentProcessorTest extends TestCase
         $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
         $transactionStruct->method('getOrderTransactionId')->willReturn($transactionId);
 
-        $this->orderTransactionService->method('get')->willReturn($this->createMock(OrderTransactionEntity::class));
+        $this->orderTransactionService->method('readOneById')->willReturn($this->createMock(OrderTransactionEntity::class));
         $this->payloadBuilder->method('build')->willReturn([]);
 
         $response = [
@@ -156,7 +156,7 @@ class PaymentProcessorTest extends TestCase
         $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
         $transactionStruct->method('getOrderTransactionId')->willReturn($transactionId);
 
-        $this->orderTransactionService->method('get')->willReturn($this->createMock(OrderTransactionEntity::class));
+        $this->orderTransactionService->method('readOneById')->willReturn($this->createMock(OrderTransactionEntity::class));
         $this->payloadBuilder->method('build')->willReturn([]);
 
         $response = [

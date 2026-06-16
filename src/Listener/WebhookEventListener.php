@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Listener;
 
+use Kommandhub\PaystackSW\EntityHandler\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundReader;
 use Kommandhub\PaystackSW\Event\Webhook\RefundPendingEvent;
 use Kommandhub\PaystackSW\Event\Webhook\RefundProcessedEvent;
 use Kommandhub\PaystackSW\Service\Webhook\RefundInitializeService;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Payment\Cart\PaymentRefundProcessor;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -20,7 +20,7 @@ final readonly class WebhookEventListener
     public function __construct(
         private RefundInitializeService $refundInitializeService,
         private PaymentRefundProcessor $paymentRefundProcessor,
-        private EntityRepository $orderTransactionCaptureRefundRepository,
+        private OrderTransactionCaptureRefundReader $orderTransactionCaptureRefundReader,
         private LoggerInterface $logger,
     ) {
     }
@@ -133,9 +133,9 @@ final readonly class WebhookEventListener
                 $externalRefundId
             )
         );
+        $criteria->addFields(['id']);
+        $criteria->setLimit(1);
 
-        return $this->orderTransactionCaptureRefundRepository
-            ->searchIds($criteria, $context)
-            ->firstId();
+        return $this->orderTransactionCaptureRefundReader->readIdOfOne($criteria, $context);
     }
 }

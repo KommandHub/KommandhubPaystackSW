@@ -7,7 +7,7 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Checkout\Payment\Processor;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\FinalizeProcessor;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionMetadataProcessorInterface;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionVerificationProcessorInterface;
-use Kommandhub\PaystackSW\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Kommandhub\PaystackSW\Service\PaymentFinalizedEventService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -72,7 +72,7 @@ class FinalizeProcessorTest extends TestCase
         $orderTransaction->method('getStateMachineState')->willReturn($state);
 
         $this->orderTransactionService->expects($this->once())
-            ->method('get')
+            ->method('readOneById')
             ->with($transactionId, $this->context)
             ->willReturn($orderTransaction);
 
@@ -110,7 +110,7 @@ class FinalizeProcessorTest extends TestCase
         $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
         $transactionStruct->method('getOrderTransactionId')->willReturn($transactionId);
 
-        $this->orderTransactionService->method('get')->willReturn($this->createMock(OrderTransactionEntity::class));
+        $this->orderTransactionService->method('readOneById')->willReturn($this->createMock(OrderTransactionEntity::class));
 
         $this->logger->expects($this->once())
             ->method('error')
@@ -132,7 +132,7 @@ class FinalizeProcessorTest extends TestCase
         $transactionStruct->method('getOrderTransactionId')->willReturn($transactionId);
 
         $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $this->orderTransactionService->method('get')->willReturn($orderTransaction);
+        $this->orderTransactionService->method('readOneById')->willReturn($orderTransaction);
 
         $this->verificationProcessor->method('verify')
             ->willThrowException(new \Exception('Verification failed'));
@@ -161,7 +161,7 @@ class FinalizeProcessorTest extends TestCase
         $state->method('getTechnicalName')->willReturn('paid');
         $orderTransaction->method('getStateMachineState')->willReturn($state);
 
-        $this->orderTransactionService->method('get')->willReturn($orderTransaction);
+        $this->orderTransactionService->method('readOneById')->willReturn($orderTransaction);
 
         $verificationData = ['data' => ['status' => 'success']];
         $this->verificationProcessor->method('verify')->willReturn($verificationData);

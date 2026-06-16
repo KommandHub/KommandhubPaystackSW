@@ -6,7 +6,7 @@ namespace Kommandhub\PaystackSW\Checkout\Payment\Processor;
 
 use Kommandhub\PaystackSW\Checkout\Payment\Struct\PaystackInitializationResponse;
 use Kommandhub\PaystackSW\Exceptions\PaystackException;
-use Kommandhub\PaystackSW\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Kommandhub\PaystackSW\Service\PayloadBuilder;
 use Kommandhub\PaystackSW\Service\TransactionService;
 use Psr\Log\LoggerInterface;
@@ -45,7 +45,7 @@ readonly class PaymentProcessor
         Context $context
     ): PaystackInitializationResponse {
         $transactionId = $transaction->getOrderTransactionId();
-        $orderTransaction = $this->orderTransactionService->get($transactionId, $context);
+        $orderTransaction = $this->orderTransactionService->readOneById($transactionId, $context);
 
         try {
             $payload = $this->payloadBuilder->build($orderTransaction, $transaction);

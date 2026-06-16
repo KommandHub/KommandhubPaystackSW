@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Checkout\Payment\Processor;
 
 use Kommandhub\PaystackSW\Checkout\Payment\Enum\PaystackTransactionStatus;
-use Kommandhub\PaystackSW\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Kommandhub\PaystackSW\Service\PaymentFinalizedEventService;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
@@ -53,7 +53,7 @@ readonly class FinalizeProcessor
     ): void {
         $transactionId = $transaction->getOrderTransactionId();
 
-        $orderTransaction = $this->orderTransactionService->get($transactionId, $context);
+        $orderTransaction = $this->orderTransactionService->readOneById($transactionId, $context);
 
         $reference = $this->extractReference($request, $transactionId);
 

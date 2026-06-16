@@ -7,7 +7,7 @@ namespace Kommandhub\PaystackSW\Checkout\Payment;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\FinalizeProcessor;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\PaymentProcessor;
 use Kommandhub\PaystackSW\Checkout\Payment\Processor\RefundProcessor;
-use Kommandhub\PaystackSW\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\RefundPaymentTransactionStruct;
@@ -80,6 +80,6 @@ final class PaystackPaymentHandler extends AbstractPaystackPaymentHandler
      */
     public function getOrderTransaction(string $transactionId, Context $context): OrderTransactionEntity
     {
-        return $this->orderTransactionService->get($transactionId, $context);
+        return $this->orderTransactionService->readOneById($transactionId, $context);
     }
 }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Kommandhub\PaystackSW\Service;
+namespace Kommandhub\PaystackSW\Service\Entity;
 
 use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionReader;
 use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionWriter;
@@ -25,7 +25,7 @@ readonly class OrderTransactionService
      *
      * @return OrderTransactionEntity
      */
-    public function get(string $transactionId, Context $context): OrderTransactionEntity
+    public function readOneById(string $transactionId, Context $context): OrderTransactionEntity
     {
         $orderTransaction = $this->orderTransactionReader->readOneById(
             $transactionId,
