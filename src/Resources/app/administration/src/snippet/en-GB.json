@@ -26,7 +26,8 @@
       "customerNotePlaceholder": "Note from the merchant to the customer",
       "merchantNoteLabel": "Merchant Note",
       "merchantNotePlaceholder": "Note from the merchant to themselves",
-      "confirmButton": "Process Refund"
+      "confirmButton": "Process Refund",
+      "errorAmountTooHigh": "The refund amount cannot exceed {maxAmount}."
     },
     "captures": {
       "grid": {

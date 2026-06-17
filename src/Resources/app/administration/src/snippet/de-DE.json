@@ -26,7 +26,8 @@
       "customerNotePlaceholder": "Notiz vom Händler an den Kunden",
       "merchantNoteLabel": "Händlernotiz",
       "merchantNotePlaceholder": "Notiz vom Händler an sich selbst",
-      "confirmButton": "Rückerstattung bearbeiten"
+      "confirmButton": "Rückerstattung bearbeiten",
+      "errorAmountTooHigh": "Der Rückerstattungsbetrag darf {maxAmount} nicht überschreiten."
     },
     "captures": {
       "grid": {

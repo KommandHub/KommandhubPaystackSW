@@ -88,6 +88,7 @@ Shopware.Component.override('sw-order-detail', {
          */
         async fetchOrder() {
             if (!this.orderId) {
+                this.isLoading = false;
                 return;
             }
 

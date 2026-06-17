@@ -234,7 +234,7 @@
             <name>showBvnField</name>
             <label>Show BVN Field</label>
             <label lang="de-DE">BVN-Feld anzeigen</label>
-            <defaultValue>true</defaultValue>
+            <defaultValue>false</defaultValue>
             <helpText>
                 Toggle visibility of the BVN (Bank Verification Number) field in the bank data form.
             </helpText>

@@ -57,11 +57,22 @@ Shopware.Component.register('kommandhub-paystack-detail', {
 
     computed: {
         /**
+         * Order repository.
+         *
+         * @returns {Repository}
+         */
+        orderRepository() {
+            return this.repositoryFactory.create('order');
+        },
+
+        /**
          * Returns the order object from the swOrderDetail store.
          *
          * @returns {Object}
          */
-        order: () => Store.get('swOrderDetail').order,
+        order() {
+            return Store.get('swOrderDetail')?.order;
+        },
 
         /**
          * Checks if the order has any unsaved changes.
@@ -69,7 +80,7 @@ Shopware.Component.register('kommandhub-paystack-detail', {
          * @returns {Boolean}
          */
         orderChanges() {
-            if (!this.order) {
+            if (!this.order?.id || !this.orderRepository) {
                 return false;
             }
 
@@ -91,7 +102,7 @@ Shopware.Component.register('kommandhub-paystack-detail', {
          * @returns {Object|null}
          */
         paystackTransaction() {
-            if (!this.order || !this.order.transactions) {
+            if (!this.order?.transactions) {
                 return null;
             }
 
@@ -107,19 +118,19 @@ Shopware.Component.register('kommandhub-paystack-detail', {
          * @returns {Array<Object>}
          */
         paystackTransactionData() {
-            if (!this.paystackTransaction) {
+            if (!this.paystackTransaction?.id) {
                 return [];
             }
 
             return [{
                 id: this.paystackTransaction.id,
-                amount: this.paystackTransaction.customFields.paystack_amount,
-                currency: this.paystackTransaction.customFields.paystack_currency,
-                channel: this.paystackTransaction.customFields.paystack_payment_type,
-                reference: this.paystackTransaction.customFields.paystack_reference,
-                transactionId: this.paystackTransaction.customFields.paystack_transaction_id,
-                fee: this.paystackTransaction.customFields.paystack_transaction_fee,
-                verifiedAt: this.paystackTransaction.customFields.paystack_verified_at,
+                amount: this.paystackTransaction.customFields?.paystack_amount,
+                currency: this.paystackTransaction.customFields?.paystack_currency,
+                channel: this.paystackTransaction.customFields?.paystack_payment_type,
+                reference: this.paystackTransaction.customFields?.paystack_reference,
+                transactionId: this.paystackTransaction.customFields?.paystack_transaction_id,
+                fee: this.paystackTransaction.customFields?.paystack_transaction_fee,
+                verifiedAt: this.paystackTransaction.customFields?.paystack_verified_at,
                 state: this.paystackTransaction.stateMachineState,
             }];
         },
@@ -160,7 +171,7 @@ Shopware.Component.register('kommandhub-paystack-detail', {
         },
 
         /**
-         * Column configuration for the captures grid.
+         * Column configuration for the capture grid.
          *
          * @returns {Array<Object>}
          */
@@ -227,12 +238,67 @@ Shopware.Component.register('kommandhub-paystack-detail', {
         },
 
         /**
+         * Calculates the maximum refundable amount.
+         *
+         * @returns {Number}
+         */
+        maxRefundableAmount() {
+            if (!this.paystackTransaction) {
+                return 0;
+            }
+
+            const totalRefundedAmount = this.refunds.reduce((total, refund) => {
+                const technicalState = refund.stateMachineState?.technicalName;
+
+                if (
+                    technicalState === 'completed'
+                    || technicalState === 'in_progress'
+                ) {
+                    return total + Number(refund.amount?.totalPrice ?? 0);
+                }
+
+                return total;
+            }, 0);
+
+            // No captures yet => refund against original transaction amount
+            if (this.captures.length === 0) {
+                const transactionAmount = Number(
+                    this.paystackTransaction.customFields?.paystack_amount ?? 0
+                );
+
+                return Number(
+                    Math.max(
+                        0,
+                        transactionAmount - totalRefundedAmount
+                    ).toFixed(2)
+                );
+            }
+
+            const activeCapturesAmount = this.captures.reduce((total, capture) => {
+                const technicalState = capture.stateMachineState?.technicalName;
+
+                if (technicalState !== 'failed') {
+                    return total + Number(capture.amount?.totalPrice ?? 0);
+                }
+
+                return total;
+            }, 0);
+
+            return Number(
+                Math.max(
+                    0,
+                    activeCapturesAmount - totalRefundedAmount
+                ).toFixed(2)
+            );
+        },
+
+        /**
          * Returns the filtered list of refunds based on the active capture.
          *
          * @returns {Array<Object>}
          */
         paystackRefunds() {
-            if (this.activeCapture) {
+            if (this.activeCapture?.id) {
                 return this.refunds.filter(refund => refund.captureId === this.activeCapture.id);
             }
 
@@ -352,13 +418,17 @@ Shopware.Component.register('kommandhub-paystack-detail', {
          */
         onOpenRefundModal(item) {
             this.activeTransaction = item;
-            this.refundAmount = item.amount;
             this.refundCurrency = item.currency;
+
+            const maxAmount = Number(this.maxRefundableAmount);
+
+            this.refundAmount = maxAmount > 0 ? maxAmount : 0.01;
+
             this.showRefundModal = true;
         },
 
         /**
-         * Opens the refunds list modal for the selected capture.
+         * Opens the refund list modal for the selected capture.
          *
          * @param {Object} item
          */
@@ -368,7 +438,7 @@ Shopware.Component.register('kommandhub-paystack-detail', {
         },
 
         /**
-         * Closes the refunds list modal and resets active capture.
+         * Closes the refund list modal and resets active capture.
          */
         onCloseRefundsListModal() {
             this.activeCapture = null;
@@ -387,10 +457,36 @@ Shopware.Component.register('kommandhub-paystack-detail', {
             this.merchantNote = null;
         },
 
+        debugRefundCalculation() {
+            return {
+                captures: this.captures.map(c => ({
+                    id: c.id,
+                    state: c.stateMachineState?.technicalName,
+                    amount: c.amount,
+                    totalPrice: c.amount?.totalPrice,
+                })),
+                refunds: this.refunds.map(r => ({
+                    id: r.id,
+                    state: r.stateMachineState?.technicalName,
+                    amount: r.amount,
+                    totalPrice: r.amount?.totalPrice,
+                })),
+            };
+        },
+
         /**
          * Initiates the refund process through the Paystack refund service.
          */
         onConfirmRefund() {
+            if (this.refundAmount > this.maxRefundableAmount) {
+                this.createNotificationError({
+                    message: this.$t('kommandhub-paystack-detail.refund.errorAmountTooHigh', {
+                        maxAmount: this.currencyFilter(this.maxRefundableAmount, this.refundCurrency),
+                    }),
+                });
+                return;
+            }
+
             this.isRefundLoading = true;
 
             const payload = {

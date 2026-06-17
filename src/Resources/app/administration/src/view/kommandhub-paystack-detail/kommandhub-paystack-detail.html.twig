@@ -1,6 +1,7 @@
 {% block sw_order_document_card %}
     {% block kommandhub_paystack_detail_card %}
     <mt-card
+            v-if="order"
             position-identifier="sw-order-document-card"
             class="kommandhub-paystack-detail-card"
     >
@@ -94,7 +95,7 @@
 
     {% block kommandhub_paystack_detail_captures_card %}
     <mt-card
-            v-if="paystackCaptures.length"
+            v-if="order && paystackCaptures.length"
             position-identifier="kommandhub-paystack-detail-captures-card"
             class="kommandhub-paystack-detail-captures-card"
             style="margin-top: 20px;"
@@ -112,7 +113,9 @@
                     class="kommandhub-paystack-detail-captures-grid"
             >
                 <template #column-amount="{ item }">
-                    {{ currencyFilter(item.amount.totalPrice, paystackTransaction.customFields.paystack_currency) }}
+                    <template v-if="paystackTransaction && paystackTransaction.customFields">
+                        {{ currencyFilter(item.amount.totalPrice, paystackTransaction.customFields.paystack_currency) }}
+                    </template>
                 </template>
 
                 <template #column-state="{ item }">
@@ -148,7 +151,7 @@
 
     {% block kommandhub_paystack_detail_refunds_list_modal %}
     <sw-modal
-            v-if="showRefundsListModal"
+            v-if="order && showRefundsListModal"
             :title="$t('kommandhub-paystack-detail.refund.listModalTitle')"
             @modal-close="onCloseRefundsListModal"
     >
@@ -199,7 +202,7 @@
 
     {% block kommandhub_paystack_detail_refund_modal %}
     <sw-modal
-            v-if="showRefundModal"
+            v-if="order && showRefundModal"
             :title="$t('kommandhub-paystack-detail.refund.modalTitle')"
             @modal-close="onCloseRefundModal"
     >
@@ -209,12 +212,14 @@
                 gap="16px"
         >
             <sw-number-field
-                    v-model="refundAmount"
+                    v-model.number="refundAmount"
                     :label="$t('kommandhub-paystack-detail.refund.amountLabel')"
                     :placeholder="$t('kommandhub-paystack-detail.refund.amountPlaceholder')"
                     :help-text="$t('kommandhub-paystack-detail.refund.amountHelpText')"
                     number-type="float"
                     :min="0.01"
+                    :max="Number(maxRefundableAmount)"
+                    :step="0.50"
             />
 
             <sw-text-field
