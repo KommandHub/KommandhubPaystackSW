@@ -1,45 +1,62 @@
 {% block page_account_overview_bank_details %}
-    {% if config('KommandhubPaystackSW.config.collectBankData') %}
-        <div class="row js-account-overview-bank_details">
-            {% block page_account_overview_bank_details_inner %}
-                <div class="col-lg-6 card-col account-overview-card overview-bank-details">
-                    {% block page_account_overview_bank_details_card %}
-                        <div class="card">
-                            <div class="card-body">
-                                {% block page_account_overview_bank_details_title %}
-                                    <h2 class="card-title">
-                                        {{ 'kommandhub-paystack.bankTitle'|trans|sw_sanitize }}
-                                    </h2>
-                                {% endblock %}
+    {% block page_account_overview_bank_details_visibility %}
+        {% if config('KommandhubPaystackSW.config.collectBankData') %}
+            {% block page_account_overview_bank_details_wrapper %}
+            <div class="row js-account-overview-bank_details">
+                {% block page_account_overview_bank_details_inner %}
+                    {% block page_account_overview_bank_details_column %}
+                    <div class="col-lg-6 card-col account-overview-card overview-bank-details">
+                        {% block page_account_overview_bank_details_card %}
+                            <div class="card">
+                                <div class="card-body">
+                                    {% block page_account_overview_bank_details_title %}
+                                        <h2 class="card-title">
+                                            {{ 'kommandhub-paystack.bankTitle'|trans|sw_sanitize }}
+                                        </h2>
+                                    {% endblock %}
 
-                                {% block page_account_overview_bank_details_content %}
-                                    {% set customFields = context.customer.customFields %}
-                                    <div class="bank-details-content">
-                                        <p>
-                                            <strong>{{ 'kommandhub-paystack.bankNameLabel'|trans|sw_sanitize }}:</strong><br>
-                                            {{ customFields.kommandhub_paystack_bank_name|default('–') }}
-                                        </p>
-                                        <p>
-                                            <strong>{{ 'kommandhub-paystack.accountNumberLabel'|trans|sw_sanitize }}:</strong><br>
-                                            {{ customFields.kommandhub_paystack_account_number|default('–') }}
-                                        </p>
-                                        <p>
-                                            <strong>{{ 'kommandhub-paystack.accountNameLabel'|trans|sw_sanitize }}:</strong><br>
-                                            {{ customFields.kommandhub_paystack_account_name|default('–') }}
-                                        </p>
-                                        {% if config('KommandhubPaystackSW.config.showBvnField') %}
+                                    {% block page_account_overview_bank_details_content %}
+                                        {% set customFields = context.customer.customFields %}
+                                        <div class="bank-details-content">
+                                            {% block page_account_overview_bank_details_bank_name %}
                                             <p>
-                                                <strong>{{ 'kommandhub-paystack.bvnLabel'|trans|sw_sanitize }}:</strong><br>
-                                                {{ customFields.kommandhub_paystack_bvn|default('–') }}
+                                                <strong>{{ 'kommandhub-paystack.bankNameLabel'|trans|sw_sanitize }}:</strong><br>
+                                                {{ customFields.kommandhub_paystack_bank_name|default('–') }}
                                             </p>
-                                        {% endif %}
-                                    </div>
-                                {% endblock %}
+                                            {% endblock %}
+
+                                            {% block page_account_overview_bank_details_account_number %}
+                                            <p>
+                                                <strong>{{ 'kommandhub-paystack.accountNumberLabel'|trans|sw_sanitize }}:</strong><br>
+                                                {{ customFields.kommandhub_paystack_account_number|default('–') }}
+                                            </p>
+                                            {% endblock %}
+
+                                            {% block page_account_overview_bank_details_account_name %}
+                                            <p>
+                                                <strong>{{ 'kommandhub-paystack.accountNameLabel'|trans|sw_sanitize }}:</strong><br>
+                                                {{ customFields.kommandhub_paystack_account_name|default('–') }}
+                                            </p>
+                                            {% endblock %}
+
+                                            {% block page_account_overview_bank_details_bvn %}
+                                                {% if config('KommandhubPaystackSW.config.showBvnField') %}
+                                                    <p>
+                                                        <strong>{{ 'kommandhub-paystack.bvnLabel'|trans|sw_sanitize }}:</strong><br>
+                                                        {{ customFields.kommandhub_paystack_bvn|default('–') }}
+                                                    </p>
+                                                {% endif %}
+                                            {% endblock %}
+                                        </div>
+                                    {% endblock %}
+                                </div>
                             </div>
-                        </div>
+                        {% endblock %}
+                    </div>
                     {% endblock %}
-                </div>
+                {% endblock %}
+            </div>
             {% endblock %}
-        </div>
-    {% endif %}
+        {% endif %}
+    {% endblock %}
 {% endblock %}

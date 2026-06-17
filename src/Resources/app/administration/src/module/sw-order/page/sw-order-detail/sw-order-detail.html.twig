@@ -1,14 +1,20 @@
 {% block sw_order_detail_content_tabs_extension %}
     {% block sw_order_detail_content_tabs_paystack %}
+        {% block sw_order_detail_content_tabs_paystack_item %}
         <sw-tabs-item
                 v-if="!isLoading && isPaystackPayment"
                 class="sw-order-detail__tabs-tab-paystack"
                 :route="{ name: 'kommandhub.paystack.detail', params: { id: $route.params.id } }"
                 :title="$t('sw-order.detail.tabPaystack')"
         >
+            {% block sw_order_detail_content_tabs_paystack_label %}
             {{ $t('sw-order.detail.tabPaystack') }}
+            {% endblock %}
         </sw-tabs-item>
+        {% endblock %}
     {% endblock %}
 
+    {% block sw_order_detail_content_tabs_paystack_parent %}
     {% parent %}
+    {% endblock %}
 {% endblock %}
