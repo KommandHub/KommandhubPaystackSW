@@ -10,14 +10,12 @@ use Kommandhub\PaystackSW\Service\TransactionService;
 use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
-use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Framework\Context;
 
 readonly class TransactionVerificationProcessor implements TransactionVerificationProcessorInterface
 {
     public function __construct(
         private TransactionService $transactionService,
-        private OrderTransactionStateHandler $transactionStateHandler,
         private LoggerInterface $logger,
     ) {
     }
@@ -38,7 +36,7 @@ readonly class TransactionVerificationProcessor implements TransactionVerificati
 
         $this->assertTransactionAmount($data, $transaction);
 
-        $this->assertTransactionStatus($data, $transaction, $context);
+        $this->assertTransactionStatus($data, $transaction);
 
         return $verification;
     }
@@ -143,8 +141,7 @@ readonly class TransactionVerificationProcessor implements TransactionVerificati
      */
     private function assertTransactionStatus(
         array $data,
-        OrderTransactionEntity $transaction,
-        Context $context
+        OrderTransactionEntity $transaction
     ): void {
         $statusValue = $data['status'] ?? null;
 
@@ -164,26 +161,11 @@ readonly class TransactionVerificationProcessor implements TransactionVerificati
         match ($status) {
             PaystackTransactionStatus::SUCCESS => null,
 
-            PaystackTransactionStatus::ABANDONED => $this->fail($transaction->getId(), 'Payment was abandoned by the customer.'),
-
-            PaystackTransactionStatus::FAILED,
-            PaystackTransactionStatus::REVERSED => $this->fail($transaction->getId(), 'Payment was rejected by the bank.'),
-
-            PaystackTransactionStatus::ONGOING,
-            PaystackTransactionStatus::PENDING,
-            PaystackTransactionStatus::PROCESSING,
-            PaystackTransactionStatus::QUEUED => $this->handlePending($transaction->getId(), $context),
+            default => $this->fail(
+                $transaction->getId(),
+                sprintf('Payment failed with status: %s', $statusValue)
+            ),
         };
-    }
-
-    /**
-     * @throws PaymentException
-     */
-    private function handlePending(string $transactionId, Context $context): void
-    {
-        $this->transactionStateHandler->process($transactionId, $context);
-
-        throw PaymentException::paymentVerificationPending();
     }
 
     /**

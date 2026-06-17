@@ -27,15 +27,6 @@ services:
       - [setContainer, ['@service_container']]
     public: true
 
-  Kommandhub\PaystackSW\Service\Webhook\RefundInitializeService:
-    arguments:
-      $orderTransactionRepository: '@order_transaction.repository'
-      $orderTransactionCaptureRepository: '@order_transaction_capture.repository'
-      $orderTransactionCaptureRefundRepository: '@order_transaction_capture_refund.repository'
-      $initialStateIdLoader: '@Shopware\Core\System\StateMachine\Loader\InitialStateIdLoader'
-      $logger: '@logger'
-    public: true
-
   Kommandhub\PaystackSW\Storefront\Controller\WebhookController:
     public: true
     calls:

@@ -57,19 +57,11 @@ readonly class FinalizeProcessor
 
         $reference = $this->extractReference($request, $transactionId);
 
-        try {
-            $verification = $this->verificationProcessor->verify(
-                $reference,
-                $orderTransaction,
-                $context
-            );
-        } catch (PaymentException $exception) {
-            if ($exception->getErrorCode() === PaymentException::PAYMENT_VERIFICATION_PENDING) {
-                return;
-            }
-
-            throw $exception; // @codeCoverageIgnore
-        }
+        $verification = $this->verificationProcessor->verify(
+            $reference,
+            $orderTransaction,
+            $context
+        );
 
         $this->metadataProcessor->persist(
             $transactionId,
@@ -78,35 +70,25 @@ readonly class FinalizeProcessor
             $context
         );
 
-        $statusValue = '';
-
-        if (isset($verification['data']) && is_array($verification['data'])) {
-            $rawStatus = $verification['data']['status'] ?? '';
-            $statusValue = is_scalar($rawStatus) ? (string)$rawStatus : '';
-        }
-
-        if ($statusValue !== PaystackTransactionStatus::SUCCESS->value) {
-            return;
-        }
-
         if (!$this->isAlreadyPaid($orderTransaction)) {
             $this->transactionStateHandler->paid($transactionId, $context);
         }
 
         $this->dispatchFinalizedEvent($orderTransaction, $transaction, $context);
 
+        $data = $verification['data'] ?? [];
         $paystackTransactionId = '';
 
-        if (isset($verification['data']) && is_array($verification['data'])) {
-            $rawId = $verification['data']['id'] ?? '';
-            $paystackTransactionId = is_scalar($rawId) ? (string)$rawId : '';
+        if (is_array($data)) {
+            $id = $data['id'] ?? '';
+            $paystackTransactionId = is_scalar($id) ? (string)$id : '';
         }
 
         $this->logger->info('Paystack payment finalized.', [
             'transaction_id' => $transactionId,
             'reference' => $reference,
             'paystack_transaction_id' => $paystackTransactionId,
-            'status' => $statusValue,
+            'status' => PaystackTransactionStatus::SUCCESS->value,
         ]);
     }
 

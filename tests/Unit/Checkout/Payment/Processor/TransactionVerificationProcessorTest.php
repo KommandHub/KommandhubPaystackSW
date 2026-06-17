@@ -40,7 +40,6 @@ class TransactionVerificationProcessorTest extends TestCase
         $this->context = Context::createDefaultContext();
         $this->processor = new TransactionVerificationProcessor(
             $this->transactionService,
-            $this->transactionStateHandler,
             $this->logger
         );
     }
@@ -141,7 +140,7 @@ class TransactionVerificationProcessorTest extends TestCase
         $this->transactionService->method('verify')->willReturn($verificationData);
 
         $this->expectException(ShopwarePaymentException::class);
-        $this->expectExceptionMessage('Payment was abandoned by the customer.');
+        $this->expectExceptionMessage('Payment failed with status: abandoned');
 
         $this->processor->verify($reference, $transaction, $this->context);
     }
@@ -173,7 +172,7 @@ class TransactionVerificationProcessorTest extends TestCase
         $this->transactionService->method('verify')->willReturn($verificationData);
 
         $this->expectException(ShopwarePaymentException::class);
-        $this->expectExceptionMessage('Payment was rejected by the bank.');
+        $this->expectExceptionMessage('Payment failed with status: failed');
 
         $this->processor->verify($reference, $transaction, $this->context);
     }
@@ -203,10 +202,9 @@ class TransactionVerificationProcessorTest extends TestCase
         ];
 
         $this->transactionService->method('verify')->willReturn($verificationData);
-        $this->transactionStateHandler->expects($this->once())->method('process')->with('test-id', $this->context);
 
-        $this->expectException(PaymentException::class);
-        $this->expectExceptionMessage('Payment verification is pending.');
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Payment failed with status: pending');
 
         $this->processor->verify($reference, $transaction, $this->context);
     }

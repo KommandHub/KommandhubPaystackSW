@@ -10,6 +10,8 @@ use Kommandhub\PaystackSW\Service\Entity\OrderTransactionService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Framework\Context;
 
@@ -55,5 +57,21 @@ class OrderTransactionServiceTest extends TestCase
         ], $context);
 
         $this->service->updateCustomFields('id', ['foo' => 'bar'], $context);
+    }
+
+    public function testSearch(): void
+    {
+        $context = Context::createDefaultContext();
+        $criteria = new Criteria();
+        $collection = $this->createMock(OrderTransactionCollection::class);
+
+        $this->reader->expects($this->once())
+            ->method('readAll')
+            ->with($context, $criteria)
+            ->willReturn($collection);
+
+        $result = $this->service->search($criteria, $context);
+
+        $this->assertSame($collection, $result);
     }
 }

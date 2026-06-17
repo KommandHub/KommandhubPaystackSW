@@ -173,7 +173,7 @@ class FinalizeProcessorTest extends TestCase
         $this->processor->process($request, $transactionStruct, $this->context);
     }
 
-    public function testProcessReturnsEarlyOnPendingVerification(): void
+    public function testProcessThrowsOnUnsuccessfulStatus(): void
     {
         $transactionId = 'test-transaction-id';
         $reference = 'test-reference';
@@ -184,37 +184,14 @@ class FinalizeProcessorTest extends TestCase
 
         $orderTransaction = $this->createMock(OrderTransactionEntity::class);
         $this->orderTransactionService->method('readOneById')->willReturn($orderTransaction);
-
-        $exception = PaymentException::paymentVerificationPending();
 
         $this->verificationProcessor->method('verify')
-            ->willThrowException($exception);
-
-        $this->metadataProcessor->expects($this->never())->method('persist');
-
-        $this->processor->process($request, $transactionStruct, $this->context);
-    }
-
-    public function testProcessReturnsEarlyOnUnsuccessfulStatus(): void
-    {
-        $transactionId = 'test-transaction-id';
-        $reference = 'test-reference';
-        $request = new Request(['reference' => $reference]);
-
-        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
-        $transactionStruct->method('getOrderTransactionId')->willReturn($transactionId);
-
-        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
-        $this->orderTransactionService->method('readOneById')->willReturn($orderTransaction);
-
-        $verificationData = [
-            'data' => [
-                'status' => 'failed', // Not success
-            ],
-        ];
-        $this->verificationProcessor->method('verify')->willReturn($verificationData);
+            ->willThrowException(PaymentException::asyncFinalizeInterrupted($transactionId, 'Payment failed with status: failed'));
 
         $this->transactionStateHandler->expects($this->never())->method('paid');
+
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Payment failed with status: failed');
 
         $this->processor->process($request, $transactionStruct, $this->context);
     }
