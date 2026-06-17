@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Kommandhub\PaystackSW\Tests\TestBootstrapper;
+namespace Kommandhub\PaystackSW\Tests;
 
 $loader = (new TestBootstrapper())
     ->setPlatformEmbedded(true)

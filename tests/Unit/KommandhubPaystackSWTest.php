@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit;
 
 use Kommandhub\PaystackSW\KommandhubPaystackSW;
-use Kommandhub\PaystackSW\Service\CustomFieldsInstaller;
+use Kommandhub\PaystackSW\Core\Installer\CustomFieldsInstaller;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;

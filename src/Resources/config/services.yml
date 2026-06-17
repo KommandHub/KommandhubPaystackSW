@@ -8,26 +8,26 @@ services:
     resource: '../../*'
     exclude: '../../{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
 
-  Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionVerificationProcessorInterface:
-    alias: Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionVerificationProcessor
+  Kommandhub\PaystackSW\Payment\Application\Processor\TransactionVerificationProcessorInterface:
+    alias: Kommandhub\PaystackSW\Payment\Application\Processor\TransactionVerificationProcessor
 
-  Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionMetadataProcessorInterface:
-    alias: Kommandhub\PaystackSW\Checkout\Payment\Processor\TransactionMetadataProcessor
+  Kommandhub\PaystackSW\Payment\Application\Processor\TransactionMetadataProcessorInterface:
+    alias: Kommandhub\PaystackSW\Payment\Application\Processor\TransactionMetadataProcessor
 
-  Kommandhub\PaystackSW\Checkout\Payment\PaystackPaymentHandler:
+  Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\Handler\PaystackPaymentHandler:
     tags:
       - { name: 'shopware.payment_handler' }
 
   Kommandhub\PaystackSW\Administration\Controller\RefundController:
     arguments:
-      $paystack: '@Kommandhub\PaystackSW\Service\Paystack'
+      $paystack: '@Kommandhub\PaystackSW\Payment\Infrastructure\Paystack\Paystack'
     tags:
       - { name: 'container.service', method: 'setContainer' }
     calls:
       - [setContainer, ['@service_container']]
     public: true
 
-  Kommandhub\PaystackSW\Storefront\Controller\WebhookController:
+  Kommandhub\PaystackSW\Webhook\Presentation\Storefront\Controller\WebhookController:
     public: true
     calls:
       - [ setContainer, [ '@service_container' ] ]

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Tests\Unit\Storefront\Validation;
 
-use Kommandhub\PaystackSW\Service\Config;
+use Kommandhub\PaystackSW\Core\Config\Config;
 use Kommandhub\PaystackSW\Storefront\Validation\BankValidationFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;

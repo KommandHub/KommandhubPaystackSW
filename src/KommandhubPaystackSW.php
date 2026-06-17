@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW;
 
-use Kommandhub\PaystackSW\Checkout\Payment\PaystackPaymentHandler;
-use Kommandhub\PaystackSW\Service\CustomFieldsInstaller;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\Handler\PaystackPaymentHandler;
+use Kommandhub\PaystackSW\Core\Installer\CustomFieldsInstaller;
 use Shopware\Core\Checkout\Payment\PaymentMethodCollection;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;

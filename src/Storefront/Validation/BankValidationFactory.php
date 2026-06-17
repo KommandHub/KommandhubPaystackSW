@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Storefront\Validation;
 
-use Kommandhub\PaystackSW\Service\Config;
+use Kommandhub\PaystackSW\Core\Config\Config;
 use Shopware\Core\Framework\Validation\DataValidationDefinition;
 use Shopware\Core\Framework\Validation\DataValidationFactoryInterface;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;

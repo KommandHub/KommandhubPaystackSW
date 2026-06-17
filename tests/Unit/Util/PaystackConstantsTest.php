@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Tests\Unit\Util;
 
-use Kommandhub\PaystackSW\Util\PaystackConstants;
+use Kommandhub\PaystackSW\Core\Util\PaystackConstants;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 

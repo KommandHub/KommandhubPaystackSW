@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Administration\Controller;
 
-use Kommandhub\PaystackSW\Service\Paystack;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Paystack\Paystack;
 use Shopware\Core\PlatformRequest;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

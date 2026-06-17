@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Integration\Administration\Controller;
 
 use Kommandhub\PaystackSW\Administration\Controller\RefundController;
-use Kommandhub\PaystackSW\Service\Paystack;
-use Kommandhub\PaystackSW\Service\Resources\Refund;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Paystack\Paystack;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Paystack\Api\Resources\Refund;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
