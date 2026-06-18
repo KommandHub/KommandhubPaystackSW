@@ -141,7 +141,9 @@ final readonly class WebhookEventListener
         $criteria->addAssociation('stateMachineState');
         $criteria->setLimit(1);
 
-        return $this->orderTransactionCaptureRefundRepository->search($criteria, $context)->first();
+        $refund = $this->orderTransactionCaptureRefundRepository->search($criteria, $context)->first();
+
+        return $refund instanceof OrderTransactionCaptureRefundEntity ? $refund : null;
     }
 
     private function isAlreadyProcessed(?OrderTransactionCaptureRefundEntity $refund): bool
