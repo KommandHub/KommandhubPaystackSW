@@ -243,6 +243,9 @@ class RefundInitializeServiceTest extends TestCase
             ->method('error')
             ->with($this->stringContains('Failed to create capture'));
 
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Failed to create capture for transaction "trans-id-123".');
+
         $this->service->handle($data, $context);
     }
 

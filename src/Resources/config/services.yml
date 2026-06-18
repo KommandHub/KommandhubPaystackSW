@@ -27,8 +27,12 @@ services:
       - [setContainer, ['@service_container']]
     public: true
 
-  Kommandhub\PaystackSW\Webhook\Presentation\Storefront\Controller\WebhookController:
+  Kommandhub\PaystackSW\Webhook\Presentation\Controller\WebhookController:
     public: true
     calls:
       - [ setContainer, [ '@service_container' ] ]
     tags: [ ]
+
+  Kommandhub\PaystackSW\Webhook\Presentation\Listener\WebhookEventListener:
+    arguments:
+      $orderTransactionCaptureRefundRepository: '@order_transaction_capture_refund.repository'

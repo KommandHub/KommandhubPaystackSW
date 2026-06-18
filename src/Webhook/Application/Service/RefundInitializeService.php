@@ -214,14 +214,18 @@ readonly class RefundInitializeService
             ], $context);
 
             return $captureId;
-        } catch (\Exception $e) {
+        } catch (\Throwable $exception) {
             $this->logger->error('[Paystack] Failed to create capture', [
-                'exception' => $e->getMessage(),
+                'exception' => $exception,
                 'transactionId' => $transaction->getId(),
                 'captureId' => $captureId,
             ]);
 
-            return '';
+            throw new \RuntimeException(
+                sprintf('Failed to create capture for transaction "%s".', $transaction->getId()),
+                0,
+                $exception
+            );
         }
     }
 

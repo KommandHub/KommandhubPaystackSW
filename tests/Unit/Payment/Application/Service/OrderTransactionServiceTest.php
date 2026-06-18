@@ -6,6 +6,7 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Payment\Application\Service;
 
 use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionReader;
 use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionWriter;
+use Kommandhub\PaystackSW\Core\Util\PaystackConstants;
 use Kommandhub\PaystackSW\Payment\Application\Service\OrderTransactionService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -73,5 +74,29 @@ class OrderTransactionServiceTest extends TestCase
         $result = $this->service->search($criteria, $context);
 
         $this->assertSame($collection, $result);
+    }
+
+    public function testFindOneByPaystackReference(): void
+    {
+        $context = Context::createDefaultContext();
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $collection = $this->createMock(OrderTransactionCollection::class);
+        $collection->method('first')->willReturn($transaction);
+
+        $this->reader->expects($this->once())
+            ->method('readAll')
+            ->with(
+                $context,
+                $this->callback(function (Criteria $criteria): bool {
+                    $serialized = serialize($criteria);
+
+                    return str_contains($serialized, PaystackConstants::FIELD_REFERENCE) && str_contains($serialized, 'paystack-ref');
+                })
+            )
+            ->willReturn($collection);
+
+        $result = $this->service->findOneByPaystackReference('paystack-ref', $context);
+
+        $this->assertSame($transaction, $result);
     }
 }

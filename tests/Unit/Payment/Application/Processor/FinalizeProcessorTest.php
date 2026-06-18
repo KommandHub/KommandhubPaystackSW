@@ -165,10 +165,17 @@ class FinalizeProcessorTest extends TestCase
 
         $this->orderTransactionService->method('readOneById')->willReturn($orderTransaction);
 
-        $verificationData = ['data' => ['status' => 'success']];
-        $this->verificationProcessor->method('verify')->willReturn($verificationData);
+        $this->verificationProcessor->expects($this->never())->method('verify');
+        $this->metadataProcessor->expects($this->never())->method('persist');
+        $this->paymentFinalizedEventService->expects($this->never())->method('fireEvent');
 
         $this->transactionStateHandler->expects($this->never())->method('paid');
+        $this->logger->expects($this->once())
+            ->method('info')
+            ->with(
+                'Paystack payment already processed.',
+                $this->callback(fn (array $context): bool => isset($context['reference'], $context['transaction_id']))
+            );
 
         $this->processor->process($request, $transactionStruct, $this->context);
     }
@@ -192,6 +199,42 @@ class FinalizeProcessorTest extends TestCase
 
         $this->expectException(ShopwarePaymentException::class);
         $this->expectExceptionMessage('Payment failed with status: failed');
+
+        $this->processor->process($request, $transactionStruct, $this->context);
+    }
+
+    public function testProcessReturnsWhenVerificationIsNotFinal(): void
+    {
+        $transactionId = 'test-transaction-id';
+        $reference = 'test-reference';
+        $request = new Request(['reference' => $reference]);
+
+        $transactionStruct = $this->createMock(PaymentTransactionStruct::class);
+        $transactionStruct->method('getOrderTransactionId')->willReturn($transactionId);
+
+        $orderTransaction = $this->createMock(OrderTransactionEntity::class);
+        $state = $this->createMock(StateMachineStateEntity::class);
+        $state->method('getTechnicalName')->willReturn('open');
+        $orderTransaction->method('getStateMachineState')->willReturn($state);
+
+        $this->orderTransactionService->method('readOneById')->willReturn($orderTransaction);
+
+        $verificationData = [
+            'status' => true,
+            'data' => [
+                'status' => 'processing',
+                'id' => 'paystack-id',
+            ],
+        ];
+
+        $this->verificationProcessor->expects($this->once())
+            ->method('verify')
+            ->willReturn($verificationData);
+
+        $this->metadataProcessor->expects($this->never())->method('persist');
+        $this->transactionStateHandler->expects($this->never())->method('paid');
+        $this->paymentFinalizedEventService->expects($this->never())->method('fireEvent');
+        $this->logger->expects($this->never())->method('info');
 
         $this->processor->process($request, $transactionStruct, $this->context);
     }

@@ -4,37 +4,43 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Tests\Unit\Webhook\Presentation\Listener;
 
-use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\EntityHandler\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundReader;
+use Kommandhub\PaystackSW\Webhook\Application\Service\RefundInitializeService;
 use Kommandhub\PaystackSW\Webhook\Domain\Event\RefundPendingEvent;
 use Kommandhub\PaystackSW\Webhook\Domain\Event\RefundProcessedEvent;
 use Kommandhub\PaystackSW\Webhook\Presentation\Listener\WebhookEventListener;
-use Kommandhub\PaystackSW\Webhook\Application\Service\RefundInitializeService;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
 use Shopware\Core\Checkout\Payment\Cart\PaymentRefundProcessor;
 use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\EntitySearchResult;
+use Shopware\Core\Framework\Uuid\Uuid;
+use Shopware\Core\System\StateMachine\Aggregation\StateMachineState\StateMachineStateEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundCollection;
 
 #[CoversClass(WebhookEventListener::class)]
-#[UsesClass(RefundInitializeService::class)]
+#[\PHPUnit\Framework\Attributes\UsesClass(RefundInitializeService::class)]
 class WebhookEventListenerTest extends TestCase
 {
     private RefundInitializeService $refundInitializeService;
     private PaymentRefundProcessor $paymentRefundProcessor;
-    private OrderTransactionCaptureRefundReader $orderTransactionCaptureRefundReader;
+    private EntityRepository $orderTransactionCaptureRefundRepository;
     private WebhookEventListener $listener;
 
     protected function setUp(): void
     {
         $this->refundInitializeService = $this->createMock(RefundInitializeService::class);
         $this->paymentRefundProcessor = $this->createMock(PaymentRefundProcessor::class);
-        $this->orderTransactionCaptureRefundReader = $this->createMock(OrderTransactionCaptureRefundReader::class);
+        $this->orderTransactionCaptureRefundRepository = $this->createMock(EntityRepository::class);
 
         $this->listener = new WebhookEventListener(
             $this->refundInitializeService,
             $this->paymentRefundProcessor,
-            $this->orderTransactionCaptureRefundReader,
+            $this->orderTransactionCaptureRefundRepository,
             $this->createMock(LoggerInterface::class)
         );
     }
@@ -67,13 +73,39 @@ class WebhookEventListenerTest extends TestCase
         $event->method('getData')->willReturn($data);
         $event->method('getContext')->willReturn($context);
 
-        $this->orderTransactionCaptureRefundReader->expects($this->once())
-            ->method('readIdOfOne')
-            ->willReturn('sw_refund_123');
+        $refund = $this->createRefundEntity('sw_refund_123', OrderTransactionCaptureRefundStates::STATE_OPEN);
+
+        $this->orderTransactionCaptureRefundRepository->expects($this->once())
+            ->method('search')
+            ->willReturn($this->createRefundSearchResult($refund));
 
         $this->paymentRefundProcessor->expects($this->once())
             ->method('processRefund')
             ->with('sw_refund_123', $context);
+
+        $this->listener->onRefundProcessedEvent($event);
+    }
+
+    public function testOnRefundProcessedEventAlreadyCompleted(): void
+    {
+        $context = Context::createDefaultContext();
+        $data = [
+            'id' => 'ref_123',
+            'transaction_reference' => 'T123',
+        ];
+        $event = $this->createMock(RefundProcessedEvent::class);
+        $event->method('getWebhookName')->willReturn('refund.processed');
+        $event->method('getData')->willReturn($data);
+        $event->method('getContext')->willReturn($context);
+
+        $refund = $this->createRefundEntity('sw_refund_123', OrderTransactionCaptureRefundStates::STATE_COMPLETED);
+
+        $this->orderTransactionCaptureRefundRepository->expects($this->once())
+            ->method('search')
+            ->willReturn($this->createRefundSearchResult($refund));
+
+        $this->refundInitializeService->expects($this->never())->method('handle');
+        $this->paymentRefundProcessor->expects($this->never())->method('processRefund');
 
         $this->listener->onRefundProcessedEvent($event);
     }
@@ -90,9 +122,14 @@ class WebhookEventListenerTest extends TestCase
         $event->method('getData')->willReturn($data);
         $event->method('getContext')->willReturn($context);
 
-        $this->orderTransactionCaptureRefundReader->expects($this->exactly(2))
-            ->method('readIdOfOne')
-            ->willReturnOnConsecutiveCalls(null, 'sw_refund_123');
+        $refund = $this->createRefundEntity('sw_refund_123', OrderTransactionCaptureRefundStates::STATE_OPEN);
+
+        $this->orderTransactionCaptureRefundRepository->expects($this->exactly(2))
+            ->method('search')
+            ->willReturnOnConsecutiveCalls(
+                $this->createRefundSearchResult(null),
+                $this->createRefundSearchResult($refund)
+            );
 
         $this->refundInitializeService->expects($this->once())
             ->method('handle')
@@ -113,7 +150,7 @@ class WebhookEventListenerTest extends TestCase
         $event->method('getData')->willReturn($data);
         $event->method('getContext')->willReturn($context);
 
-        $this->orderTransactionCaptureRefundReader->expects($this->never())->method('readIdOfOne');
+        $this->orderTransactionCaptureRefundRepository->expects($this->never())->method('search');
         $this->paymentRefundProcessor->expects($this->never())->method('processRefund');
 
         $this->listener->onRefundProcessedEvent($event);
@@ -127,7 +164,7 @@ class WebhookEventListenerTest extends TestCase
         $event->method('getData')->willReturn($data);
         $event->method('getContext')->willReturn($context);
 
-        $this->orderTransactionCaptureRefundReader->expects($this->never())->method('readIdOfOne');
+        $this->orderTransactionCaptureRefundRepository->expects($this->never())->method('search');
         $this->paymentRefundProcessor->expects($this->never())->method('processRefund');
 
         $this->listener->onRefundProcessedEvent($event);
@@ -144,9 +181,12 @@ class WebhookEventListenerTest extends TestCase
         $event->method('getData')->willReturn($data);
         $event->method('getContext')->willReturn($context);
 
-        $this->orderTransactionCaptureRefundReader->expects($this->exactly(2))
-            ->method('readIdOfOne')
-            ->willReturn(null);
+        $this->orderTransactionCaptureRefundRepository->expects($this->exactly(2))
+            ->method('search')
+            ->willReturnOnConsecutiveCalls(
+                $this->createRefundSearchResult(null),
+                $this->createRefundSearchResult(null)
+            );
 
         $this->refundInitializeService->expects($this->once())->method('handle');
         $this->paymentRefundProcessor->expects($this->never())->method('processRefund');
@@ -165,7 +205,11 @@ class WebhookEventListenerTest extends TestCase
         $event->method('getData')->willReturn($data);
         $event->method('getContext')->willReturn($context);
 
-        $this->orderTransactionCaptureRefundReader->method('readIdOfOne')->willReturn('sw_refund_123');
+        $refund = $this->createRefundEntity('sw_refund_123', OrderTransactionCaptureRefundStates::STATE_OPEN);
+
+        $this->orderTransactionCaptureRefundRepository->expects($this->once())
+            ->method('search')
+            ->willReturn($this->createRefundSearchResult($refund));
 
         $this->paymentRefundProcessor->expects($this->once())
             ->method('processRefund')
@@ -175,5 +219,35 @@ class WebhookEventListenerTest extends TestCase
         $this->expectExceptionMessage('Error');
 
         $this->listener->onRefundProcessedEvent($event);
+    }
+
+    private function createRefundEntity(string $id, string $state): OrderTransactionCaptureRefundEntity
+    {
+        $refund = new OrderTransactionCaptureRefundEntity();
+        $refund->setId($id);
+
+        $stateEntity = new StateMachineStateEntity();
+        $stateEntity->setTechnicalName($state);
+        $refund->setStateMachineState($stateEntity);
+
+        return $refund;
+    }
+
+    private function createRefundSearchResult(?OrderTransactionCaptureRefundEntity $refund): EntitySearchResult
+    {
+        $entities = [];
+
+        if ($refund !== null) {
+            $entities[] = $refund;
+        }
+
+        return new EntitySearchResult(
+            OrderTransactionCaptureRefundEntity::class,
+            count($entities),
+            new OrderTransactionCaptureRefundCollection($entities),
+            null,
+            new Criteria(),
+            Context::createDefaultContext()
+        );
     }
 }

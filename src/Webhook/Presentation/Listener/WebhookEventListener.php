@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Webhook\Presentation\Listener;
 
-use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\EntityHandler\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundReader;
+use Kommandhub\PaystackSW\Webhook\Application\Service\RefundInitializeService;
 use Kommandhub\PaystackSW\Webhook\Domain\Event\RefundPendingEvent;
 use Kommandhub\PaystackSW\Webhook\Domain\Event\RefundProcessedEvent;
-use Kommandhub\PaystackSW\Webhook\Application\Service\RefundInitializeService;
 use Psr\Log\LoggerInterface;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
 use Shopware\Core\Checkout\Payment\Cart\PaymentRefundProcessor;
 use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -20,7 +22,7 @@ final readonly class WebhookEventListener
     public function __construct(
         private RefundInitializeService $refundInitializeService,
         private PaymentRefundProcessor $paymentRefundProcessor,
-        private OrderTransactionCaptureRefundReader $orderTransactionCaptureRefundReader,
+        private EntityRepository $orderTransactionCaptureRefundRepository,
         private LoggerInterface $logger,
     ) {
     }
@@ -69,29 +71,23 @@ final readonly class WebhookEventListener
             $refundId
         );
 
-        $shopwareRefundId = $this->findRefundId(
-            $refundReference,
-            $context
-        );
+        $refund = $this->findRefund($refundReference, $context);
 
         /**
          * Safety net:
          * Some merchants may receive refund.processed before
          * refund.pending. Ensure the refund entity exists.
          */
-        if ($shopwareRefundId === null) {
+        if ($refund === null) {
             $this->refundInitializeService->handle(
                 $data,
                 $context
             );
 
-            $shopwareRefundId = $this->findRefundId(
-                $refundReference,
-                $context
-            );
+            $refund = $this->findRefund($refundReference, $context);
         }
 
-        if ($shopwareRefundId === null) {
+        if ($refund === null) {
             $this->logger->warning(
                 '[Paystack] Unable to locate refund entity after initialization.',
                 [
@@ -102,16 +98,25 @@ final readonly class WebhookEventListener
             return;
         }
 
+        if ($this->isAlreadyProcessed($refund)) {
+            $this->logger->info('[Paystack] Refund already processed.', [
+                'refund_id' => $refund->getId(),
+                'paystack_refund_id' => $refundReference,
+            ]);
+
+            return;
+        }
+
         try {
             $this->paymentRefundProcessor->processRefund(
-                $shopwareRefundId,
+                $refund->getId(),
                 $context
             );
         } catch (\Throwable $exception) {
             $this->logger->error(
                 '[Paystack] Failed to process Shopware refund.',
                 [
-                    'refund_id' => $shopwareRefundId,
+                    'refund_id' => $refund->getId(),
                     'paystack_refund_id' => $refundReference,
                     'exception' => $exception,
                 ]
@@ -121,10 +126,10 @@ final readonly class WebhookEventListener
         }
     }
 
-    private function findRefundId(
+    private function findRefund(
         string $externalRefundId,
         Context $context
-    ): ?string {
+    ): ?OrderTransactionCaptureRefundEntity {
         $criteria = new Criteria();
 
         $criteria->addFilter(
@@ -133,9 +138,14 @@ final readonly class WebhookEventListener
                 $externalRefundId
             )
         );
-        $criteria->addFields(['id']);
+        $criteria->addAssociation('stateMachineState');
         $criteria->setLimit(1);
 
-        return $this->orderTransactionCaptureRefundReader->readIdOfOne($criteria, $context);
+        return $this->orderTransactionCaptureRefundRepository->search($criteria, $context)->first();
+    }
+
+    private function isAlreadyProcessed(?OrderTransactionCaptureRefundEntity $refund): bool
+    {
+        return $refund?->getStateMachineState()?->getTechnicalName() === OrderTransactionCaptureRefundStates::STATE_COMPLETED;
     }
 }

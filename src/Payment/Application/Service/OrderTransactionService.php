@@ -6,10 +6,12 @@ namespace Kommandhub\PaystackSW\Payment\Application\Service;
 
 use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionReader;
 use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionWriter;
+use Kommandhub\PaystackSW\Core\Util\PaystackConstants;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Checkout\Payment\PaymentException;
 
 readonly class OrderTransactionService
@@ -56,6 +58,22 @@ readonly class OrderTransactionService
         $transactions = $this->orderTransactionReader->readAll($context, $criteria);
 
         return $transactions;
+    }
+
+    public function findOneByPaystackReference(string $reference, Context $context): ?OrderTransactionEntity
+    {
+        $criteria = $this->getCriteria();
+        $criteria->addFilter(
+            new EqualsFilter(
+                sprintf('customFields.%s', PaystackConstants::FIELD_REFERENCE),
+                $reference
+            )
+        );
+
+        /** @var OrderTransactionEntity|null $orderTransaction */
+        $orderTransaction = $this->search($criteria, $context)->first();
+
+        return $orderTransaction;
     }
 
     /**

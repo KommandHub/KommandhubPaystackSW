@@ -160,7 +160,14 @@ readonly class TransactionVerificationProcessor implements TransactionVerificati
 
         match ($status) {
             PaystackTransactionStatus::SUCCESS => null,
-
+            PaystackTransactionStatus::PENDING,
+            PaystackTransactionStatus::PROCESSING,
+            PaystackTransactionStatus::QUEUED,
+            PaystackTransactionStatus::ONGOING,
+            PaystackTransactionStatus::ABANDONED => $this->logger->info('Paystack transaction not final yet.', [
+                'transactionId' => $transaction->getId(),
+                'status' => $statusValue,
+            ]),
             default => $this->fail(
                 $transaction->getId(),
                 sprintf('Payment failed with status: %s', $statusValue)

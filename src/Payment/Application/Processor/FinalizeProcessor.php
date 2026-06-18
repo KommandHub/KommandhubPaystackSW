@@ -57,11 +57,24 @@ readonly class FinalizeProcessor
 
         $reference = $this->extractReference($request, $transactionId);
 
+        if ($this->isAlreadyProcessed($orderTransaction)) {
+            $this->logger->info('Paystack payment already processed.', [
+                'transaction_id' => $transactionId,
+                'reference' => $reference,
+            ]);
+
+            return;
+        }
+
         $verification = $this->verificationProcessor->verify(
             $reference,
             $orderTransaction,
             $context
         );
+
+        if (!$this->isSuccessfulVerification($verification)) {
+            return;
+        }
 
         $this->metadataProcessor->persist(
             $transactionId,
@@ -70,9 +83,7 @@ readonly class FinalizeProcessor
             $context
         );
 
-        if (!$this->isAlreadyPaid($orderTransaction)) {
-            $this->transactionStateHandler->paid($transactionId, $context);
-        }
+        $this->transactionStateHandler->paid($transactionId, $context);
 
         $this->dispatchFinalizedEvent($orderTransaction, $transaction, $context);
 
@@ -154,8 +165,32 @@ readonly class FinalizeProcessor
      *
      * @return bool
      */
-    private function isAlreadyPaid(OrderTransactionEntity $transaction): bool
+    private function isAlreadyProcessed(OrderTransactionEntity $transaction): bool
     {
         return $transaction->getStateMachineState()?->getTechnicalName() === 'paid';
+    }
+
+    /**
+     * @param array<string, mixed> $verification
+     */
+    private function isSuccessfulVerification(array $verification): bool
+    {
+        return $this->getVerificationStatus($verification) === PaystackTransactionStatus::SUCCESS->value;
+    }
+
+    /**
+     * @param array<string, mixed> $verification
+     */
+    private function getVerificationStatus(array $verification): string
+    {
+        $data = $verification['data'] ?? [];
+
+        if (!is_array($data)) {
+            return '';
+        }
+
+        $status = $data['status'] ?? '';
+
+        return is_scalar($status) ? (string)$status : '';
     }
 }
