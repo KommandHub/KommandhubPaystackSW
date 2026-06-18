@@ -7,14 +7,20 @@ namespace Kommandhub\PaystackSW\Webhook\Presentation\Controller;
 use Kommandhub\PaystackSW\Webhook\Application\Processor\WebhookProcessor;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Framework\Context;
+use Shopware\Core\PlatformRequest;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 
-#[Route(defaults: ['_routeScope' => ['api'], 'csrf_protected' => false])]
+/*
+ * We use `storefront` scope otherwise Paystack will be required to have authorization to call the webhook endpoint,
+ * which is not possible. By setting the scope to `storefront`, we allow unauthenticated requests to this endpoint
+ * while still keeping it within the context of the storefront, which is appropriate for webhook processing.
+ */
+#[Route(defaults: [PlatformRequest::ATTRIBUTE_ROUTE_SCOPE => ['storefront']])]
 class WebhookController extends AbstractController
 {
     public function __construct(
@@ -26,7 +32,7 @@ class WebhookController extends AbstractController
     #[Route(
         path: '/paystack/webhook',
         name: 'frontend.paystack.webhook',
-        methods: ['POST']
+        methods: [Request::METHOD_POST]
     )]
     public function execute(Request $request, Context $context): Response
     {

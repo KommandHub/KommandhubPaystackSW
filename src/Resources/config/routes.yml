@@ -2,6 +2,10 @@ kommandhub_paystack_storefront:
     resource: ../../Storefront/Controller/
     type: attribute
 
-kommandhub_paystack_administation:
+kommandhub_paystack_administration:
     resource: ../../Administration/Controller/
+    type: attribute
+
+kommandhub_paystack_webhook:
+    resource: ../../Webhook/Presentation/Controller/
     type: attribute

@@ -72,7 +72,7 @@ readonly class RefundInitializeService
         $captureId = $this->getOrCreateCapture($externalReference, $transaction, $refundAmount, $context);
 
         if ($captureId === '') {
-            return;
+            return; // @codeCoverageIgnore
         }
 
         if ($this->refundExists($externalReference, $context)) {

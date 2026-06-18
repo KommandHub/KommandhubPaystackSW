@@ -20,7 +20,7 @@ Shopware.Component.override('sw-order-detail', {
     data() {
         return {
             isLoading: true,
-            order: null,
+            paystackOrder: null,
         };
     },
 
@@ -58,26 +58,26 @@ Shopware.Component.override('sw-order-detail', {
          * @returns {boolean}
          */
         isPaystackPayment() {
-            if (!this.order?.transactions?.length) {
+            if (!this.paystackOrder?.transactions?.length) {
                 return false;
             }
 
-            return this.order.transactions.some(
+            return this.paystackOrder.transactions.some(
                 (transaction) =>
                     transaction.paymentMethod?.handlerIdentifier ===
-                    'Kommandhub\\PaystackSW\\Checkout\\Payment\\PaystackPaymentHandler'
+                    'Kommandhub\\PaystackSW\\Payment\\Infrastructure\\Shopware\\Handler\\PaystackPaymentHandler'
             );
         },
     },
 
     watch: {
         orderId() {
-            this.fetchOrder();
+            void this.fetchOrder();
         },
     },
 
     created() {
-        this.fetchOrder();
+        void this.fetchOrder();
     },
 
     methods: {
@@ -95,12 +95,16 @@ Shopware.Component.override('sw-order-detail', {
             this.isLoading = true;
 
             try {
-                this.order = await this.orderRepository.get(
+                this.paystackOrder = await this.orderRepository.get(
                     this.orderId,
                     Shopware.Context.api,
                     this.orderCriteria
                 );
             } catch (error) {
+                if (this.isAbortError(error)) {
+                    return;
+                }
+
                 console.error(
                     '[Paystack] Failed to load order details.',
                     error
@@ -108,6 +112,12 @@ Shopware.Component.override('sw-order-detail', {
             } finally {
                 this.isLoading = false;
             }
+        },
+
+        isAbortError(error) {
+            return error?.code === 'ECONNABORTED'
+                || error?.name === 'AbortError'
+                || error?.message === 'Request aborted';
         },
     },
 });

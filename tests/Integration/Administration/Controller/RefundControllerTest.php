@@ -12,12 +12,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
-use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureCollection;
-use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureEntity;
-use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureStates;
-use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundCollection;
-use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundEntity;
-use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineState\StateMachineStateEntity;
 use Symfony\Component\HttpFoundation\Request;
@@ -57,6 +51,8 @@ class RefundControllerTest extends TestCase
             'transaction' => 'T12345',
             'amount' => 5000,
             'reason' => 'Customer request',
+            'customer_note' => 'Please refund to original source',
+            'merchant_note' => 'Approved by support',
         ];
 
         $request = new Request([], $payload);
@@ -78,6 +74,8 @@ class RefundControllerTest extends TestCase
                 'transaction' => 'T12345',
                 'amount' => 5000,
                 'reason' => 'Customer request',
+                'customer_note' => 'Please refund to original source',
+                'merchant_note' => 'Approved by support',
             ])
             ->willReturn($expectedResponse);
 
@@ -173,29 +171,6 @@ class RefundControllerTest extends TestCase
         $state->setTechnicalName(OrderTransactionStates::STATE_PAID);
         $transaction->setStateMachineState($state);
 
-        $capture = new OrderTransactionCaptureEntity();
-        $capture->setId('capture-id');
-        $captureState = new StateMachineStateEntity();
-        $captureState->setTechnicalName(OrderTransactionCaptureStates::STATE_COMPLETED);
-        $capture->setStateMachineState($captureState);
-        $capture->setRefunds(new OrderTransactionCaptureRefundCollection([
-            $this->createRefundEntity(),
-        ]));
-
-        $transaction->setCaptures(new OrderTransactionCaptureCollection([$capture]));
-
         return $transaction;
-    }
-
-    private function createRefundEntity(): OrderTransactionCaptureRefundEntity
-    {
-        $refund = new OrderTransactionCaptureRefundEntity();
-        $refund->setId('refund-id');
-
-        $state = new StateMachineStateEntity();
-        $state->setTechnicalName(OrderTransactionCaptureRefundStates::STATE_COMPLETED);
-        $refund->setStateMachineState($state);
-
-        return $refund;
     }
 }

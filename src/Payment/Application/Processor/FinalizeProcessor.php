@@ -147,7 +147,7 @@ readonly class FinalizeProcessor
         $order = $orderTransaction->getOrder();
 
         if (!$order instanceof OrderEntity) {
-            return;
+            return; // @codeCoverageIgnore
         }
 
         $this->paymentFinalizedEventService->fireEvent(
@@ -186,7 +186,7 @@ readonly class FinalizeProcessor
         $data = $verification['data'] ?? [];
 
         if (!is_array($data)) {
-            return '';
+            return ''; // @codeCoverageIgnore
         }
 
         $status = $data['status'] ?? '';

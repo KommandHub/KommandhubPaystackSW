@@ -22,6 +22,7 @@ Developed with ❤️ by [Kommandhub Limited](https://kommandhub.com)
    * [Via Composer](#via-composer-recommended)
    * [Manual Installation](#manual-installation-github-upload)
 * [Configuration](#configuration)
+* [Directory Structure](#directory-structure)
 * [Payment Flow](#payment-flow)
 * [Development & Testing](#development--testing)
 * [Compatibility](#compatibility)
@@ -141,6 +142,74 @@ Recommended for troubleshooting.
 2. Enable **Paystack Payment**
 
 3. Assign it to your **Sales Channel**
+
+---
+
+# Directory Structure
+
+The plugin follows a feature-based structure that keeps Shopware entry points thin and groups behavior by responsibility:
+
+```text
+KommandhubPaystackSW/
+├── src/
+│   ├── KommandhubPaystackSW.php
+│   ├── Core/
+│   │   ├── Config/
+│   │   ├── Exception/
+│   │   └── Util/
+│   ├── Payment/
+│   │   ├── Application/
+│   │   │   ├── Processor/
+│   │   │   └── Service/
+│   │   ├── Domain/
+│   │   │   ├── Event/
+│   │   │   ├── Enum/
+│   │   │   └── ValueObject/
+│   │   └── Infrastructure/
+│   │       ├── Paystack/
+│   │       │   ├── Api/
+│   │       │   └── Http/
+│   │       └── Shopware/
+│   │           ├── Handler/
+│   │           └── Struct/
+│   ├── Webhook/
+│   │   ├── Application/
+│   │   ├── Domain/
+│   │   └── Presentation/
+│   │       ├── Controller/
+│   │       └── Listener/
+│   ├── Administration/
+│   │   └── Controller/
+│   ├── Storefront/
+│   │   ├── Controller/
+│   │   └── Validation/
+│   └── Resources/
+│       ├── config/
+│       ├── snippet/
+│       ├── views/
+│       ├── app/administration/
+│       └── app/storefront/
+└── tests/
+    ├── Integration/
+    └── Unit/
+```
+
+## What each area is for
+
+* `Core/`: shared config, exceptions, and utility code used by multiple features.
+* `Payment/`: payment initialization, verification, finalization, refund processing, and Paystack API adapters.
+* `Webhook/`: webhook event parsing, signature validation, event listeners, and webhook-specific flows.
+* `Administration/`: backend controllers used by Shopware Admin.
+* `Storefront/`: storefront controllers and validation helpers.
+* `Resources/`: plugin configuration, Twig templates, snippets, and frontend assets.
+* `tests/`: unit and integration tests that mirror the production structure.
+
+## Important conventions
+
+* Feature code stays grouped by responsibility instead of by framework type alone.
+* Controllers remain thin and delegate to application services.
+* Test folders mirror `src/` so it is easy to find coverage for each feature.
+* Shopware assets under `Resources/` are kept separate from runtime code.
 
 ---
 

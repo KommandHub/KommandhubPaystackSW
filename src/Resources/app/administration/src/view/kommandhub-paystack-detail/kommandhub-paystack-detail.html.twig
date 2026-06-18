@@ -62,6 +62,7 @@
                     <template #actions="{ item }">
                         {% block kommandhub_paystack_detail_grid_actions_refund %}
                         <sw-context-menu-item
+                                v-if="!isTransactionRefunded"
                                 @click="onOpenRefundModal(item)"
                         >
                             {{ $t('kommandhub-paystack-detail.grid.refund') }}
@@ -79,12 +80,12 @@
                     {% block kommandhub_paystack_detail_grid_column_state %}
                     <template #column-state="{ item }">
                         <sw-label
-                                v-if="item.state"
-                                variant="neutral"
-                                appearance="pill"
-                        >
-                            {{ item.state.translated.name }}
-                        </sw-label>
+                            v-if="item.state && item.state.translated"
+                            variant="neutral"
+                            appearance="pill"
+                    >
+                        {{ item.state.translated.name }}
+                    </sw-label>
                     </template>
                     {% endblock %}
 

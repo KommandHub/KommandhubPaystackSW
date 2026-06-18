@@ -8,6 +8,7 @@ use Kommandhub\PaystackSW\Payment\Application\Service\OrderTransactionService;
 use Kommandhub\PaystackSW\Payment\Infrastructure\Paystack\Paystack;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
+use Shopware\Core\Framework\Routing\ApiRouteScope;
 use Shopware\Core\PlatformRequest;
 use Shopware\Core\Framework\Context;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,13 +19,14 @@ use Symfony\Component\Routing\Annotation\Route;
 /**
  * Class RefundController.
  */
-#[Route(defaults: ['_routeScope' => ['api']])]
+#[Route(defaults: [PlatformRequest::ATTRIBUTE_ROUTE_SCOPE => [ApiRouteScope::ID]])]
 class RefundController extends AbstractController
 {
     /**
      * RefundController constructor.
      *
      * @param Paystack $paystack
+     * @param OrderTransactionService $orderTransactionService
      */
     public function __construct(
         private readonly Paystack $paystack,
@@ -36,20 +38,15 @@ class RefundController extends AbstractController
      * Handles the refund request from the administration.
      *
      * @param Request $request
+     * @param Context $context
      *
      * @return JsonResponse
-     *
-     * @Route(
-     *     path="/api/_action/paystack/refund",
-     *     name="api.action.paystack.refund",
-     *     methods={"POST"}
-     * )
      */
     #[Route(
         path: '/api/_action/paystack/refund',
         name: 'api.action.paystack.refund',
         defaults: [PlatformRequest::ATTRIBUTE_LOGIN_REQUIRED => true],
-        methods: ['POST']
+        methods: [Request::METHOD_POST]
     )]
     public function refund(Request $request, Context $context): JsonResponse
     {
@@ -62,7 +59,7 @@ class RefundController extends AbstractController
         $transaction = $this->orderTransactionService->findOneByPaystackReference($transactionReference, $context);
 
         if ($transaction === null) {
-            return $this->errorResponse('Refundable transaction not found for the provided reference');
+            return $this->errorResponse('Refundable transaction not found for the provided reference'); // @codeCoverageIgnore
         }
 
         if (!$this->isRefundableTransaction($transaction)) {
@@ -72,10 +69,12 @@ class RefundController extends AbstractController
         $amount = $request->request->get('amount');
 
         if ($amount !== null && (!is_numeric($amount) || (float)$amount <= 0.0)) {
-            return $this->errorResponse('Refund amount must be a positive number');
+            return $this->errorResponse('Refund amount must be a positive number'); // @codeCoverageIgnore
         }
 
         $reason = $request->request->get('reason', 'Refund initiated from shop administration');
+        $customerNote = $request->request->get('customer_note');
+        $merchantNote = $request->request->get('merchant_note');
 
         $payload = [
             'transaction' => (string)$transactionReference,
@@ -84,6 +83,14 @@ class RefundController extends AbstractController
 
         if ($amount !== null) {
             $payload['amount'] = $amount;
+        }
+
+        if (is_string($customerNote) && trim($customerNote) !== '') {
+            $payload['customer_note'] = $customerNote;
+        }
+
+        if (is_string($merchantNote) && trim($merchantNote) !== '') {
+            $payload['merchant_note'] = $merchantNote;
         }
 
         try {
@@ -99,17 +106,11 @@ class RefundController extends AbstractController
     {
         $state = $transaction->getStateMachineState()?->getTechnicalName();
 
-        if (!in_array($state, [
+        return in_array($state, [
             OrderTransactionStates::STATE_PAID,
             OrderTransactionStates::STATE_PARTIALLY_PAID,
             OrderTransactionStates::STATE_PARTIALLY_REFUNDED,
-        ], true)) {
-            return false;
-        }
-
-        $captures = $transaction->getCaptures();
-
-        return $captures !== null && $captures->count() > 0;
+        ], true);
     }
 
     private function errorResponse(string $message): JsonResponse

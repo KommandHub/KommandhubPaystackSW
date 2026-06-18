@@ -80,7 +80,7 @@ Shopware.Component.register('kommandhub-paystack-detail', {
          * @returns {Boolean}
          */
         orderChanges() {
-            if (!this.order?.id || !this.orderRepository) {
+            if (!this.order || !this.order?.id || !this.orderRepository) {
                 return false;
             }
 
@@ -102,7 +102,7 @@ Shopware.Component.register('kommandhub-paystack-detail', {
          * @returns {Object|null}
          */
         paystackTransaction() {
-            if (!this.order?.transactions) {
+            if (!this.order || !this.order?.transactions) {
                 return null;
             }
 
@@ -110,6 +110,15 @@ Shopware.Component.register('kommandhub-paystack-detail', {
                 return transaction.customFields
                     && transaction.customFields.paystack_reference;
             });
+        },
+
+        /**
+         * Returns whether the current transaction is fully refunded.
+         *
+         * @returns {Boolean}
+         */
+        isTransactionRefunded() {
+            return this.paystackTransaction?.stateMachineState?.technicalName === 'refunded';
         },
 
         /**
@@ -330,13 +339,18 @@ Shopware.Component.register('kommandhub-paystack-detail', {
             immediate: true,
             handler(transaction) {
                 if (transaction?.id) {
-                    this.loadCapturesAndRefunds();
+                    void this.loadCapturesAndRefunds();
                 }
             },
         },
     },
 
     methods: {
+        createdComponent() {
+            if (this.paystackTransaction?.id) {
+                void this.loadCapturesAndRefunds();
+            }
+        },
         /**
          * Creates search criteria for fetching captures associated with a transaction.
          *
@@ -403,6 +417,10 @@ Shopware.Component.register('kommandhub-paystack-detail', {
                 this.captures = captures;
                 this.refunds = refunds;
             } catch (error) {
+                if (this.isAbortError(error)) {
+                    return;
+                }
+
                 this.createNotificationError({
                     message: error.message,
                 });
@@ -504,6 +522,10 @@ Shopware.Component.register('kommandhub-paystack-detail', {
                     await this.loadCapturesAndRefunds();
                 })
                 .catch((error) => {
+                    if (this.isAbortError(error)) {
+                        return;
+                    }
+
                     const errorData = error.response?.data;
                     let message = errorData?.error || error.message;
 
@@ -527,12 +549,16 @@ Shopware.Component.register('kommandhub-paystack-detail', {
             this.isRefundSuccess = false;
             this.onCloseRefundModal();
         },
+
+        isAbortError(error) {
+            return error?.code === 'ECONNABORTED'
+                || error?.name === 'AbortError'
+                || error?.message === 'Request aborted';
+        },
     },
 
     /** @private */
     created() {
-        if (this.paystackTransaction?.id) {
-            this.loadCapturesAndRefunds();
-        }
+        this.createdComponent();
     },
 });

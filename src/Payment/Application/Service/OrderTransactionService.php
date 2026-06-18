@@ -98,6 +98,7 @@ readonly class OrderTransactionService
             'order.orderCustomer.salutation',
             'order.billingAddress.country',
             'order.deliveries.shippingOrderAddress.country',
+            'stateMachineState',
             'captures.refunds',
             'captures.stateMachineState',
             'captures.refunds.stateMachineState',
