@@ -1,4 +1,4 @@
-# Paystack Plugin for Shopware 6
+# Paystack Payment for Shopware 6
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Shopware](https://img.shields.io/badge/Shopware-6.6%2B-blue.svg)](https://shopware.com)
@@ -233,7 +233,8 @@ Order marked as Paid
 
 # Development & Testing
 
-To ensure a consistent environment, tests and development tools should be run inside the plugin's Docker container.
+Run these commands from your host machine (outside the container) in the plugin directory.  
+The `make` targets execute the tools in the running Shopware container for you.
 
 ### 1. Start the Container
 
@@ -241,15 +242,7 @@ To ensure a consistent environment, tests and development tools should be run in
 make up
 ```
 
-### 2. Enter the Container Shell
-
-```bash
-make shell
-```
-
-### 3. Run Development Commands
-
-Once inside the container, you can execute the following commands:
+### 2. Run Development Commands on the Host
 
 #### Run Tests
 ```bash
@@ -271,6 +264,10 @@ make analyse
 make cs
 make cs-fix
 ```
+
+### 3. Optional: Inspect the Container
+
+`make shell` is still available when you want to inspect the running Shopware container manually.
 
 ---
 
