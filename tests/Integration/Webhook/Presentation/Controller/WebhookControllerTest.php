@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Kommandhub\PaystackSW\Tests\Integration\Webhook\Presentation\Storefront\Controller;
+namespace Kommandhub\PaystackSW\Tests\Integration\Webhook\Presentation\Controller;
 
 use Kommandhub\PaystackSW\Core\Config\Config;
 use Kommandhub\PaystackSW\Webhook\Application\Factory\WebhookEventFactory;
 use Kommandhub\PaystackSW\Webhook\Application\Processor\WebhookProcessor;
-use Kommandhub\PaystackSW\Webhook\Presentation\Storefront\Controller\WebhookController;
+use Kommandhub\PaystackSW\Webhook\Presentation\Controller\WebhookController;
 use Kommandhub\PaystackSW\Webhook\Application\Service\WebhookSignatureValidator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
