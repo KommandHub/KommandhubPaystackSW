@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW;
 
-use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\Handler\PaystackPaymentHandler;
 use Kommandhub\PaystackSW\Core\Installer\CustomFieldsInstaller;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\Handler\PaystackPaymentHandler;
 use Shopware\Core\Checkout\Payment\PaymentMethodCollection;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
@@ -17,143 +17,229 @@ use Shopware\Core\Framework\Plugin\Context\DeactivateContext;
 use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
+use Symfony\Component\Config\FileLocator;
+use Symfony\Component\Config\Loader\DelegatingLoader;
+use Symfony\Component\Config\Loader\LoaderResolver;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\DirectoryLoader;
+use Symfony\Component\DependencyInjection\Loader\GlobFileLoader;
+use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 
+/**
+ * Main Shopware plugin class for Kommandhub Paystack integration.
+ *
+ * Responsibilities:
+ * - Registers plugin services (via Symfony container)
+ * - Manages lifecycle (install/activate/deactivate/uninstall)
+ * - Creates and maintains Paystack payment method
+ * - Installs custom fields required for integration
+ */
 class KommandhubPaystackSW extends Plugin
 {
+    /**
+     * Allow composer commands during plugin execution.
+     */
     public function executeComposerCommands(): bool
     {
         return true;
     }
 
-    public function install(InstallContext $installContext): void
+    /**
+     * Load additional service configuration files.
+     *
+     * This extends Shopware's DI container with custom YAML configurations.
+     * @throws \Exception
+     */
+    public function build(ContainerBuilder $container): void
     {
-        $this->addPaymentMethod($installContext->getContext());
-        $this->getCustomFieldsInstaller()->install($installContext->getContext());
-        $this->getCustomFieldsInstaller()->addRelations($installContext->getContext());
+        parent::build($container);
+
+        $locator = new FileLocator('Resources/config');
+
+        $resolver = new LoaderResolver([
+            new YamlFileLoader($container, $locator),
+            new GlobFileLoader($container, $locator),
+            new DirectoryLoader($container, $locator),
+        ]);
+
+        $loader = new DelegatingLoader($resolver);
+
+        $configPath = rtrim($this->getPath(), '/') . '/Resources/config';
+
+        // Load all package service definitions
+        $loader->load($configPath . '/{packages}/*.yaml', 'glob');
     }
 
+    /**
+     * Plugin installation lifecycle hook.
+     *
+     * Creates payment method and installs required custom fields.
+     */
+    public function install(InstallContext $installContext): void
+    {
+        $context = $installContext->getContext();
+
+        $this->addOrActivatePaymentMethod($context);
+
+        $installer = $this->getCustomFieldsInstaller();
+        $installer->install($context);
+        $installer->addRelations($context);
+    }
+
+    /**
+     * Plugin activation lifecycle hook.
+     */
+    public function activate(ActivateContext $activateContext): void
+    {
+        $this->setPaymentMethodActive(true, $activateContext->getContext());
+
+        parent::activate($activateContext);
+    }
+
+    /**
+     * Plugin deactivation lifecycle hook.
+     */
+    public function deactivate(DeactivateContext $deactivateContext): void
+    {
+        $this->setPaymentMethodActive(false, $deactivateContext->getContext());
+
+        parent::deactivate($deactivateContext);
+    }
+
+    /**
+     * Plugin uninstall lifecycle hook.
+     *
+     * Important:
+     * We do NOT delete the payment method to avoid breaking historical orders.
+     */
     public function uninstall(UninstallContext $uninstallContext): void
     {
         parent::uninstall($uninstallContext);
 
-        // Only set the payment method to inactive when uninstalling. Removing the payment method would
-        // cause data consistency issues, since the payment method might have been used in several orders
-        $this->setPaymentMethodIsActive(false, $uninstallContext->getContext());
+        $this->setPaymentMethodActive(false, $uninstallContext->getContext());
 
         if ($uninstallContext->keepUserData()) {
-            return; // @codeCoverageIgnore
-        }
-
-        $this->getCustomFieldsInstaller()->uninstall($uninstallContext->getContext()); // @codeCoverageIgnore
-    }
-
-    public function activate(ActivateContext $activateContext): void
-    {
-        $this->setPaymentMethodIsActive(true, $activateContext->getContext());
-        parent::activate($activateContext);
-    }
-
-    public function deactivate(DeactivateContext $deactivateContext): void
-    {
-        $this->setPaymentMethodIsActive(false, $deactivateContext->getContext());
-        parent::deactivate($deactivateContext);
-    }
-
-    private function addPaymentMethod(Context $context): void
-    {
-        /** @phpstan-ignore-next-line */
-        if (!isset($this->container) || $this->container === null) {
-            return; // @codeCoverageIgnore
-        }
-
-        $paymentMethodExists = $this->getPaymentMethodId();
-
-        // Payment method exists already, no need to continue here
-        if ($paymentMethodExists) { // @codeCoverageIgnoreStart
-            $this->setPaymentMethodIsActive(true, $context);
-
             return;
-        } // @codeCoverageIgnoreEnd
+        }
+
+        $this->getCustomFieldsInstaller()->uninstall($uninstallContext->getContext());
+    }
+
+    /**
+     * Creates payment method if it does not exist, otherwise ensures it is active.
+     */
+    private function addOrActivatePaymentMethod(Context $context): void
+    {
+        if (!$this->hasContainer()) {
+            return;
+        }
+
+        $paymentId = $this->getPaymentMethodId();
+
+        // If already exists, just ensure it's active
+        if ($paymentId !== null) {
+            $this->setPaymentMethodActive(true, $context);
+            return;
+        }
 
         /** @var PluginIdProvider $pluginIdProvider */
         $pluginIdProvider = $this->container->get(PluginIdProvider::class);
-        $pluginId = $pluginIdProvider->getPluginIdByBaseClass(get_class($this), $context);
 
-        $paymentData = [
+        $pluginId = $pluginIdProvider->getPluginIdByBaseClass(static::class, $context);
+
+        /** @var EntityRepository<PaymentMethodCollection> $repository */
+        $repository = $this->container->get('payment_method.repository');
+
+        $repository->create([
             [
-                // the identifier will select the payment handler
                 'handlerIdentifier' => PaystackPaymentHandler::class,
                 'name' => 'Pay with Paystack',
-                'description' => 'Securely pay with your card, bank account, or mobile money via Paystack.',
+                'description' => 'Securely pay with card, bank transfer or mobile money via Paystack.',
                 'pluginId' => $pluginId,
-                'afterOrderEnabled' => true,
                 'technicalName' => 'kommandhub_paystack_payment',
+                'afterOrderEnabled' => true,
+                'active' => true,
             ],
-        ];
-
-        /** @var EntityRepository<PaymentMethodCollection> $paymentRepository */
-        $paymentRepository = $this->container->get('payment_method.repository');
-        $paymentRepository->create($paymentData, $context);
+        ], $context);
     }
 
-    private function setPaymentMethodIsActive(bool $active, Context $context): void
+    /**
+     * Activates or deactivates the Paystack payment method.
+     */
+    private function setPaymentMethodActive(bool $active, Context $context): void
     {
-        /** @phpstan-ignore-next-line */
-        if (!isset($this->container) || $this->container === null) {
-            return; // @codeCoverageIgnore
+        if (!$this->hasContainer()) {
+            return;
         }
 
-        /** @var EntityRepository<PaymentMethodCollection> $paymentRepository */
-        $paymentRepository = $this->container->get('payment_method.repository');
+        $paymentId = $this->getPaymentMethodId();
 
-        $paymentMethodId = $this->getPaymentMethodId();
-
-        // Payment does not even exist, so nothing to (de-)activate here
-        if (!$paymentMethodId) {
-            return; // @codeCoverageIgnore
+        if ($paymentId === null) {
+            return;
         }
 
-        $paymentMethod = [
-            'id' => $paymentMethodId,
-            'active' => $active,
-        ];
+        /** @var EntityRepository<PaymentMethodCollection> $repository */
+        $repository = $this->container->get('payment_method.repository');
 
-        $paymentRepository->update([$paymentMethod], $context);
+        $repository->update([
+            [
+                'id' => $paymentId,
+                'active' => $active,
+            ],
+        ], $context);
     }
 
+    /**
+     * Returns the Paystack payment method ID if it exists.
+     */
     private function getPaymentMethodId(): ?string
     {
-        /** @phpstan-ignore-next-line */
-        if (!isset($this->container) || $this->container === null) {
-            return null; // @codeCoverageIgnore
+        if (!$this->hasContainer()) {
+            return null;
         }
 
-        /** @var EntityRepository $paymentMethodRepository */
-        $paymentMethodRepository = $this->container->get('payment_method.repository');
+        /** @var EntityRepository $repository */
+        $repository = $this->container->get('payment_method.repository');
 
-        // Fetch ID for update
-        $paymentCriteria = (new Criteria())->addFilter(new EqualsFilter('handlerIdentifier', PaystackPaymentHandler::class));
+        $criteria = (new Criteria())->addFilter(
+            new EqualsFilter('handlerIdentifier', PaystackPaymentHandler::class)
+        );
 
-        return $paymentMethodRepository->searchIds($paymentCriteria, Context::createDefaultContext())->firstId();
+        return $repository
+            ->searchIds($criteria, Context::createDefaultContext())
+            ->firstId();
     }
 
+    /**
+     * Returns configured custom field installer.
+     */
     private function getCustomFieldsInstaller(): CustomFieldsInstaller
     {
-        /** @phpstan-ignore-next-line */
-        if (!isset($this->container) || $this->container === null) {
-            throw new \RuntimeException('The container is not available.'); // @codeCoverageIgnore
+        if (!$this->hasContainer()) {
+            throw new \RuntimeException('Container is not available.');
         }
 
-        $customFieldSetRepository = $this->container->get('custom_field_set.repository');
-        $customFieldSetRelationRepository = $this->container->get('custom_field_set_relation.repository');
+        $setRepo = $this->container->get('custom_field_set.repository');
+        $relationRepo = $this->container->get('custom_field_set_relation.repository');
 
-        if (!$customFieldSetRelationRepository instanceof EntityRepository || !$customFieldSetRepository instanceof EntityRepository) {
-            throw new \RuntimeException('Required repositories are not available in the container.'); // @codeCoverageIgnore
+        if (
+            !$setRepo instanceof EntityRepository ||
+            !$relationRepo instanceof EntityRepository
+        ) {
+            throw new \RuntimeException('Invalid repository services.');
         }
 
         return new CustomFieldsInstaller(
-            $customFieldSetRepository,
-            $customFieldSetRelationRepository
+            $setRepo,
+            $relationRepo
         );
+    }
+
+    /**
+     * Checks whether the DI container is available.
+     */
+    private function hasContainer(): bool
+    {
+        return isset($this->container);
     }
 }
