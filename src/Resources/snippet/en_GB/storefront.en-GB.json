@@ -10,5 +10,11 @@
     "bvnLabel": "BVN (Bank Verification Number)",
     "bvnPlaceholder": "Enter your BVN",
     "saveButton": "Save Bank Details"
+  },
+  "checkout": {
+    "paystack-configuration-error": "Paystack is not configured correctly. Please contact the shop owner."
+  },
+  "error": {
+    "paystack-configuration-error": "Paystack is not configured correctly. Please contact the shop owner."
   }
 }
