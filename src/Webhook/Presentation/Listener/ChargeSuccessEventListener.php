@@ -7,7 +7,7 @@ namespace Kommandhub\PaystackSW\Webhook\Presentation\Listener;
 use Kommandhub\PaystackSW\Payment\Application\Processor\FinalizeProcessor;
 use Kommandhub\PaystackSW\Payment\Application\Service\OrderTransactionService;
 use Kommandhub\PaystackSW\Webhook\Domain\Event\ChargeSuccessEvent;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,7 +17,7 @@ final readonly class ChargeSuccessEventListener
     public function __construct(
         private OrderTransactionService $orderTransactionService,
         private FinalizeProcessor $finalizeProcessor,
-        private LoggerInterface $logger,
+        private ConfigurableLogger $logger,
     ) {
     }
 

@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -33,7 +33,7 @@ class FinalizeProcessorTest extends TestCase
     private TransactionVerificationProcessorInterface&MockObject $verificationProcessor;
     private TransactionMetadataProcessorInterface&MockObject $metadataProcessor;
     private PaymentFinalizedEventService&MockObject $paymentFinalizedEventService;
-    private LoggerInterface&MockObject $logger;
+    private ConfigurableLogger&MockObject $logger;
     private Context $context;
     private FinalizeProcessor $processor;
 
@@ -44,7 +44,7 @@ class FinalizeProcessorTest extends TestCase
         $this->verificationProcessor = $this->createMock(TransactionVerificationProcessorInterface::class);
         $this->metadataProcessor = $this->createMock(TransactionMetadataProcessorInterface::class);
         $this->paymentFinalizedEventService = $this->createMock(PaymentFinalizedEventService::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger = $this->createMock(ConfigurableLogger::class);
         $this->context = Context::createDefaultContext();
 
         $this->processor = new FinalizeProcessor(

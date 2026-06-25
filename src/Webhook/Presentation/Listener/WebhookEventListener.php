@@ -7,7 +7,7 @@ namespace Kommandhub\PaystackSW\Webhook\Presentation\Listener;
 use Kommandhub\PaystackSW\Webhook\Application\Service\RefundInitializeService;
 use Kommandhub\PaystackSW\Webhook\Domain\Event\RefundPendingEvent;
 use Kommandhub\PaystackSW\Webhook\Domain\Event\RefundProcessedEvent;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
 use Shopware\Core\Checkout\Payment\Cart\PaymentRefundProcessor;
@@ -23,7 +23,7 @@ final readonly class WebhookEventListener
         private RefundInitializeService $refundInitializeService,
         private PaymentRefundProcessor $paymentRefundProcessor,
         private EntityRepository $orderTransactionCaptureRefundRepository,
-        private LoggerInterface $logger,
+        private ConfigurableLogger $logger,
     ) {
     }
 

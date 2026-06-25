@@ -64,4 +64,23 @@ class Config
     {
         return $this->systemConfigService->getBool(self::KEY . $key, $salesChannelId);
     }
+
+    /**
+     * Retrieves an array configuration value by key.
+     *
+     * @param string $key Configuration key (without prefix).
+     * @param string|null $salesChannelId Optional sales channel ID.
+     *
+     * @return array The configuration value as array.
+     */
+    public function getArray(string $key, ?string $salesChannelId = null): array
+    {
+        $value = $this->systemConfigService->get(self::KEY . $key, $salesChannelId);
+
+        if (!is_array($value)) {
+            return [];
+        }
+
+        return $value;
+    }
 }

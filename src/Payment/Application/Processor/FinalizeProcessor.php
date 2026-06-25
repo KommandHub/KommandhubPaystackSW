@@ -8,7 +8,7 @@ use Kommandhub\PaystackSW\Payment\Domain\Enum\PaystackTransactionStatus;
 use Kommandhub\PaystackSW\Core\Exception\PaymentException;
 use Kommandhub\PaystackSW\Payment\Application\Service\OrderTransactionService;
 use Kommandhub\PaystackSW\Payment\Application\Service\PaymentFinalizedEventService;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
@@ -24,7 +24,7 @@ readonly class FinalizeProcessor
      * @param TransactionVerificationProcessorInterface $verificationProcessor
      * @param TransactionMetadataProcessorInterface $metadataProcessor
      * @param PaymentFinalizedEventService $paymentFinalizedEventService
-     * @param LoggerInterface $logger
+     * @param ConfigurableLogger $logger
      */
     public function __construct(
         private OrderTransactionService $orderTransactionService,
@@ -32,7 +32,7 @@ readonly class FinalizeProcessor
         private TransactionVerificationProcessorInterface $verificationProcessor,
         private TransactionMetadataProcessorInterface $metadataProcessor,
         private PaymentFinalizedEventService $paymentFinalizedEventService,
-        private LoggerInterface $logger,
+        private ConfigurableLogger $logger,
     ) {
     }
 

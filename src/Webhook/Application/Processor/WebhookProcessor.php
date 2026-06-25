@@ -6,7 +6,7 @@ namespace Kommandhub\PaystackSW\Webhook\Application\Processor;
 
 use Kommandhub\PaystackSW\Webhook\Application\Factory\WebhookEventFactory;
 use Kommandhub\PaystackSW\Webhook\Application\Service\WebhookSignatureValidator;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Framework\Context;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,7 +17,7 @@ class WebhookProcessor
     public function __construct(
         private readonly WebhookSignatureValidator $signatureValidator,
         private readonly EventDispatcherInterface $eventDispatcher,
-        private readonly LoggerInterface $logger,
+        private readonly ConfigurableLogger $logger,
         private readonly WebhookEventFactory $eventFactory
     ) {
     }

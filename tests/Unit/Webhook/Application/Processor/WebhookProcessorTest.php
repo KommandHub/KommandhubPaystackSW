@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Framework\Context;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,7 +26,7 @@ class WebhookProcessorTest extends TestCase
 {
     private WebhookSignatureValidator&MockObject $signatureValidator;
     private EventDispatcherInterface&MockObject $eventDispatcher;
-    private LoggerInterface&MockObject $logger;
+    private ConfigurableLogger&MockObject $logger;
     private WebhookEventFactory&MockObject $eventFactory;
     private WebhookProcessor $processor;
 
@@ -34,7 +34,7 @@ class WebhookProcessorTest extends TestCase
     {
         $this->signatureValidator = $this->createMock(WebhookSignatureValidator::class);
         $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger = $this->createMock(ConfigurableLogger::class);
         $this->eventFactory = $this->createMock(WebhookEventFactory::class);
 
         $this->processor = new WebhookProcessor(

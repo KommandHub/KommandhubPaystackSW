@@ -6,7 +6,7 @@ namespace Kommandhub\PaystackSW\Webhook\Application\Service;
 
 use Kommandhub\PaystackSW\Core\Util\PaystackConstants;
 use Kommandhub\PaystackSW\Core\Util\PaystackCurrencyHelper;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
 use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
@@ -30,7 +30,7 @@ readonly class RefundInitializeService
         private EntityRepository $orderTransactionCaptureRepository,
         private EntityRepository $orderTransactionCaptureRefundRepository,
         private InitialStateIdLoader $initialStateIdLoader,
-        private LoggerInterface $logger,
+        private ConfigurableLogger $logger,
     ) {
     }
 

@@ -10,7 +10,7 @@ use Kommandhub\PaystackSW\Core\Exception\PaystackException;
 use Kommandhub\PaystackSW\Payment\Application\Service\OrderTransactionService;
 use Kommandhub\PaystackSW\Payment\Application\Service\PayloadBuilder;
 use Kommandhub\PaystackSW\Payment\Application\Service\TransactionService;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Framework\Context;
 
@@ -20,13 +20,13 @@ readonly class PaymentProcessor
      * @param OrderTransactionService $orderTransactionService
      * @param PayloadBuilder $payloadBuilder
      * @param TransactionService $transactionService
-     * @param LoggerInterface $logger
+     * @param ConfigurableLogger $logger
      */
     public function __construct(
         private OrderTransactionService $orderTransactionService,
         private PayloadBuilder $payloadBuilder,
         private TransactionService $transactionService,
-        private LoggerInterface $logger,
+        private ConfigurableLogger $logger,
     ) {
     }
 

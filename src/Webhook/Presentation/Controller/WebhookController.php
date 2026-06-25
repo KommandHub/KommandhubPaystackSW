@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Webhook\Presentation\Controller;
 
 use Kommandhub\PaystackSW\Webhook\Application\Processor\WebhookProcessor;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\PlatformRequest;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -25,7 +25,7 @@ class WebhookController extends AbstractController
 {
     public function __construct(
         private readonly WebhookProcessor $webhookProcessor,
-        private readonly LoggerInterface $logger
+        private readonly ConfigurableLogger $logger
     ) {
     }
 

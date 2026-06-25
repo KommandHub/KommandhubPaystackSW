@@ -8,7 +8,7 @@ use Kommandhub\PaystackSW\Payment\Domain\Enum\PaystackTransactionStatus;
 use Kommandhub\PaystackSW\Core\Exception\PaymentException;
 use Kommandhub\PaystackSW\Payment\Application\Service\TransactionService;
 use Kommandhub\PaystackSW\Core\Util\PaystackCurrencyHelper;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Framework\Context;
 
@@ -16,7 +16,7 @@ readonly class TransactionVerificationProcessor implements TransactionVerificati
 {
     public function __construct(
         private TransactionService $transactionService,
-        private LoggerInterface $logger,
+        private ConfigurableLogger $logger,
     ) {
     }
 

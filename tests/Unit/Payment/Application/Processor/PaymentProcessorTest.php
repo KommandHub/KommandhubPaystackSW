@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\PaymentException;
@@ -27,7 +27,7 @@ class PaymentProcessorTest extends TestCase
     private OrderTransactionService&MockObject $orderTransactionService;
     private PayloadBuilder&MockObject $payloadBuilder;
     private TransactionService&MockObject $transactionService;
-    private LoggerInterface&MockObject $logger;
+    private ConfigurableLogger&MockObject $logger;
     private Context $context;
     private PaymentProcessor $processor;
 
@@ -36,7 +36,7 @@ class PaymentProcessorTest extends TestCase
         $this->orderTransactionService = $this->createMock(OrderTransactionService::class);
         $this->payloadBuilder = $this->createMock(PayloadBuilder::class);
         $this->transactionService = $this->createMock(TransactionService::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger = $this->createMock(ConfigurableLogger::class);
         $this->context = Context::createDefaultContext();
 
         $this->processor = new PaymentProcessor(

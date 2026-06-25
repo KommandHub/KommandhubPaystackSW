@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -28,7 +28,7 @@ class TransactionVerificationProcessorTest extends TestCase
 {
     private TransactionService&MockObject $transactionService;
     private OrderTransactionStateHandler&MockObject $transactionStateHandler;
-    private LoggerInterface&MockObject $logger;
+    private ConfigurableLogger&MockObject $logger;
     private Context $context;
     private TransactionVerificationProcessor $processor;
 
@@ -36,7 +36,7 @@ class TransactionVerificationProcessorTest extends TestCase
     {
         $this->transactionService = $this->createMock(TransactionService::class);
         $this->transactionStateHandler = $this->createMock(OrderTransactionStateHandler::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger = $this->createMock(ConfigurableLogger::class);
         $this->context = Context::createDefaultContext();
         $this->processor = new TransactionVerificationProcessor(
             $this->transactionService,
