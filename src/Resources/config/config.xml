@@ -273,5 +273,55 @@
                 Protokolliert detaillierte Informationen zu Zahlungsereignissen zur Fehlerdiagnose. Im Produktivbetrieb deaktivieren, um sensible Daten zu schützen.
             </helpText>
         </input-field>
+
+        <input-field type="multi-select">
+            <name>logLevels</name>
+            <options>
+                <option>
+                    <id>debug</id>
+                    <name>Debug</name>
+                    <name lang="de-DE">Debug</name>
+                </option>
+                <option>
+                    <id>info</id>
+                    <name>Info</name>
+                    <name lang="de-DE">Info</name>
+                </option>
+                <option>
+                    <id>notice</id>
+                    <name>Notice</name>
+                    <name lang="de-DE">Hinweis</name>
+                </option>
+                <option>
+                    <id>warning</id>
+                    <name>Warning</name>
+                    <name lang="de-DE">Warnung</name>
+                </option>
+                <option>
+                    <id>error</id>
+                    <name>Error</name>
+                    <name lang="de-DE">Fehler</name>
+                </option>
+                <option>
+                    <id>critical</id>
+                    <name>Critical</name>
+                    <name lang="de-DE">Kritisch</name>
+                </option>
+                <option>
+                    <id>alert</id>
+                    <name>Alert</name>
+                    <name lang="de-DE">Alarm</name>
+                </option>
+                <option>
+                    <id>emergency</id>
+                    <name>Emergency</name>
+                    <name lang="de-DE">Notfall</name>
+                </option>
+            </options>
+            <label>Log levels to log</label>
+            <label lang="de-DE">Zu protokollierende Log-Level</label>
+            <helpText>Select which log levels should be recorded when detailed logging is enabled.</helpText>
+            <helpText lang="de-DE">Wählen Sie aus, welche Log-Level aufgezeichnet werden sollen, wenn die detaillierte Protokollierung aktiviert ist.</helpText>
+        </input-field>
     </card>
 </config>

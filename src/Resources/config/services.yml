@@ -36,3 +36,12 @@ services:
   Kommandhub\PaystackSW\Webhook\Presentation\Listener\WebhookEventListener:
     arguments:
       $orderTransactionCaptureRefundRepository: '@order_transaction_capture_refund.repository'
+
+  Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger:
+    arguments:
+      $logger: '@monolog.logger.paystack_channel'
+    tags:
+      - { name: 'monolog.logger', channel: 'paystack_channel' }
+
+  Psr\Log\LoggerInterface:
+    alias: Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger

@@ -1,0 +1,9 @@
+monolog:
+  channels: ['paystack_channel']
+
+  handlers:
+    paystackLogHandler:
+      max_files: 7
+      type: rotating_file
+      path: "%kernel.logs_dir%/paystack_%kernel.environment%.log"
+      channels: [ "paystack_channel"]
