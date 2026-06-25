@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Tests\Unit\Webhook\Presentation\Listener;
 
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Kommandhub\PaystackSW\Payment\Application\Processor\FinalizeProcessor;
 use Kommandhub\PaystackSW\Payment\Application\Service\OrderTransactionService;
 use Kommandhub\PaystackSW\Webhook\Domain\Event\ChargeSuccessEvent;
 use Kommandhub\PaystackSW\Webhook\Presentation\Listener\ChargeSuccessEventListener;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Framework\Context;
@@ -21,14 +21,14 @@ class ChargeSuccessEventListenerTest extends TestCase
 {
     private OrderTransactionService $orderTransactionService;
     private FinalizeProcessor $finalizeProcessor;
-    private LoggerInterface $logger;
+    private ConfigurableLogger $logger;
     private ChargeSuccessEventListener $listener;
 
     protected function setUp(): void
     {
         $this->orderTransactionService = $this->createMock(OrderTransactionService::class);
         $this->finalizeProcessor = $this->createMock(FinalizeProcessor::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger = $this->createMock(ConfigurableLogger::class);
 
         $this->listener = new ChargeSuccessEventListener(
             $this->orderTransactionService,

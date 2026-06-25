@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit\Webhook\Presentation\Listener;
 
 use Kommandhub\PaystackSW\Webhook\Application\Service\RefundInitializeService;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Kommandhub\PaystackSW\Webhook\Domain\Event\RefundPendingEvent;
 use Kommandhub\PaystackSW\Webhook\Domain\Event\RefundProcessedEvent;
 use Kommandhub\PaystackSW\Webhook\Presentation\Listener\WebhookEventListener;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
 use Shopware\Core\Checkout\Payment\Cart\PaymentRefundProcessor;
@@ -40,7 +40,7 @@ class WebhookEventListenerTest extends TestCase
             $this->refundInitializeService,
             $this->paymentRefundProcessor,
             $this->orderTransactionCaptureRefundRepository,
-            $this->createMock(LoggerInterface::class)
+            $this->createMock(ConfigurableLogger::class)
         );
     }
 

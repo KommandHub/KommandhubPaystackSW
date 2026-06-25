@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit\Webhook\Application\Service;
 
 use Kommandhub\PaystackSW\Webhook\Application\Service\RefundInitializeService;
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Kommandhub\PaystackSW\Core\Util\PaystackCurrencyHelper;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureCollection;
@@ -31,7 +31,7 @@ class RefundInitializeServiceTest extends TestCase
     private EntityRepository&MockObject $orderTransactionCaptureRepository;
     private EntityRepository&MockObject $orderTransactionCaptureRefundRepository;
     private InitialStateIdLoader&MockObject $initialStateIdLoader;
-    private LoggerInterface&MockObject $logger;
+    private ConfigurableLogger&MockObject $logger;
     private RefundInitializeService $service;
 
     protected function setUp(): void
@@ -40,7 +40,7 @@ class RefundInitializeServiceTest extends TestCase
         $this->orderTransactionCaptureRepository = $this->createMock(EntityRepository::class);
         $this->orderTransactionCaptureRefundRepository = $this->createMock(EntityRepository::class);
         $this->initialStateIdLoader = $this->createMock(InitialStateIdLoader::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger = $this->createMock(ConfigurableLogger::class);
 
         $this->service = new RefundInitializeService(
             $this->orderTransactionRepository,

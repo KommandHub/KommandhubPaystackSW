@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit\Core\Config;
 
 use Kommandhub\PaystackSW\Core\Config\Config;
-use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 
-#[CoversClass(Config::class)]
 class ConfigTest extends TestCase
 {
-    private SystemConfigService $systemConfigService;
+    private SystemConfigService&MockObject $systemConfigService;
     private Config $config;
 
     protected function setUp(): void
@@ -25,40 +24,77 @@ class ConfigTest extends TestCase
     {
         $this->systemConfigService->expects($this->once())
             ->method('get')
-            ->with(Config::KEY . 'test_key', 'channel-id')
-            ->willReturn('test_value');
+            ->with(Config::KEY . 'someKey', 'sales-channel-id')
+            ->willReturn('someValue');
 
-        $this->assertEquals('test_value', $this->config->get('test_key', null, 'channel-id'));
+        $result = $this->config->get('someKey', null, 'sales-channel-id');
+        $this->assertSame('someValue', $result);
     }
 
-    public function testGetReturnsDefault(): void
+    public function testGetWithDefault(): void
     {
-        $this->systemConfigService->method('get')->willReturn(null);
-        $this->assertEquals('default', $this->config->get('test_key', 'default'));
+        $this->systemConfigService->expects($this->once())
+            ->method('get')
+            ->with(Config::KEY . 'missingKey', null)
+            ->willReturn(null);
+
+        $result = $this->config->get('missingKey', 'defaultValue');
+        $this->assertSame('defaultValue', $result);
     }
 
     public function testGetString(): void
     {
-        $this->systemConfigService->method('get')->willReturn('string_value');
-        $this->assertEquals('string_value', $this->config->getString('test_key'));
+        $this->systemConfigService->expects($this->once())
+            ->method('get')
+            ->with(Config::KEY . 'stringKey', null)
+            ->willReturn('stringValue');
+
+        $result = $this->config->getString('stringKey');
+        $this->assertSame('stringValue', $result);
     }
 
-    public function testGetStringReturnsEmptyString(): void
+    public function testGetStringWithNonString(): void
     {
-        $this->systemConfigService->method('get')->willReturn(null);
-        $this->assertEquals('', $this->config->getString('test_key'));
+        $this->systemConfigService->expects($this->once())
+            ->method('get')
+            ->with(Config::KEY . 'nonStringKey', null)
+            ->willReturn(123);
 
-        $this->systemConfigService->method('get')->willReturn(123);
-        $this->assertEquals('', $this->config->getString('test_key'));
+        $result = $this->config->getString('nonStringKey');
+        $this->assertSame('', $result);
     }
 
     public function testGetBool(): void
     {
         $this->systemConfigService->expects($this->once())
             ->method('getBool')
-            ->with(Config::KEY . 'bool_key', 'channel-id')
+            ->with(Config::KEY . 'boolKey', 'sales-channel-id')
             ->willReturn(true);
 
-        $this->assertTrue($this->config->getBool('bool_key', 'channel-id'));
+        $result = $this->config->getBool('boolKey', 'sales-channel-id');
+        $this->assertTrue($result);
+    }
+
+    public function testGetArray(): void
+    {
+        $expectedArray = ['val1', 'val2'];
+        $this->systemConfigService->expects($this->once())
+            ->method('get')
+            ->with(Config::KEY . 'arrayKey', null)
+            ->willReturn($expectedArray);
+
+        $result = $this->config->getArray('arrayKey');
+        $this->assertSame($expectedArray, $result);
+    }
+
+    public function testGetArrayWithNonArray(): void
+    {
+        $this->systemConfigService->expects($this->once())
+            ->method('get')
+            ->with(Config::KEY . 'nonArrayKey', null)
+            ->willReturn('not-an-array');
+
+        $result = $this->config->getArray('nonArrayKey');
+        $this->assertSame([], $result);
     }
 }

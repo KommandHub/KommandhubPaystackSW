@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Tests\Integration\Webhook\Presentation\Controller;
 
+use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Kommandhub\PaystackSW\Core\Config\Config;
 use Kommandhub\PaystackSW\Webhook\Application\Factory\WebhookEventFactory;
 use Kommandhub\PaystackSW\Webhook\Application\Processor\WebhookProcessor;
@@ -12,7 +13,6 @@ use Kommandhub\PaystackSW\Webhook\Application\Service\WebhookSignatureValidator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
 use Shopware\Core\Framework\Context;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,7 +27,7 @@ class WebhookControllerTest extends TestCase
     private WebhookProcessor $webhookProcessor;
     private WebhookSignatureValidator $signatureValidator;
     private EventDispatcherInterface $eventDispatcher;
-    private LoggerInterface $logger;
+    private ConfigurableLogger $logger;
     private WebhookEventFactory $eventFactory;
     private WebhookController $controller;
 
@@ -36,7 +36,7 @@ class WebhookControllerTest extends TestCase
         $this->config = $this->createMock(Config::class);
         $this->signatureValidator = new WebhookSignatureValidator($this->config);
         $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger = $this->createMock(ConfigurableLogger::class);
         $this->eventFactory = $this->createMock(WebhookEventFactory::class);
 
         $this->webhookProcessor = new WebhookProcessor(

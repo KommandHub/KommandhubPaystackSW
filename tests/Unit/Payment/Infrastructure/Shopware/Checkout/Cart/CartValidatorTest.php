@@ -60,9 +60,9 @@ class CartValidatorTest extends TestCase
 
         $this->logger->expects($this->once())
             ->method('error')
-            ->with('Paystack API secret key is not set', [
-                'isSandbox' => false,
+            ->with('Paystack API secret key is not configured.', [
                 'salesChannelId' => 'channel-id',
+                'isSandbox' => false,
                 'cartToken' => 'cart-token',
             ]);
 
@@ -89,9 +89,9 @@ class CartValidatorTest extends TestCase
 
         $this->logger->expects($this->once())
             ->method('error')
-            ->with('Paystack API secret key is not set', [
-                'isSandbox' => true,
+            ->with('Paystack API secret key is not configured.', [
                 'salesChannelId' => 'channel-id',
+                'isSandbox' => true,
                 'cartToken' => 'cart-token',
             ]);
 
@@ -114,6 +114,23 @@ class CartValidatorTest extends TestCase
 
         $this->config->method('getBool')->with('enableSandbox', 'channel-id')->willReturn(false);
         $this->config->method('getString')->with('apiSecretKey', 'channel-id')->willReturn('sk_live_123');
+
+        $this->validator->validate($cart, $errors, $context);
+
+        $this->assertCount(0, $errors);
+    }
+
+    public function testValidateWithExistingConfigurationError(): void
+    {
+        $cart = $this->createMock(Cart::class);
+        $errors = new ErrorCollection();
+        $context = $this->createMock(SalesChannelContext::class);
+        $paymentMethod = new PaymentMethodEntity();
+        $paymentMethod->setHandlerIdentifier(PaystackPaymentHandler::class);
+
+        $context->method('getPaymentMethod')->willReturn($paymentMethod);
+        
+        $cart->method('getErrors')->willReturn(new ErrorCollection([new ConfigurationError()]));
 
         $this->validator->validate($cart, $errors, $context);
 
