@@ -48,7 +48,9 @@ class KommandhubPaystackSW extends Plugin
      * Load additional service configuration files.
      *
      * This extends Shopware's DI container with custom YAML configurations.
+     *
      * @throws \Exception
+     *
      * @codeCoverageIgnore
      */
     public function build(ContainerBuilder $container): void
@@ -131,7 +133,7 @@ class KommandhubPaystackSW extends Plugin
      */
     private function addOrActivatePaymentMethod(Context $context): void
     {
-        if (!$this->hasContainer()) {
+        if ($this->container === null) {
             return; // @codeCoverageIgnore
         }
 
@@ -140,6 +142,7 @@ class KommandhubPaystackSW extends Plugin
         // If already exists, just ensure it's active
         if ($paymentId !== null) { // @codeCoverageIgnoreStart
             $this->setPaymentMethodActive(true, $context);
+
             return;
         } // @codeCoverageIgnoreEnd
 
@@ -169,7 +172,7 @@ class KommandhubPaystackSW extends Plugin
      */
     private function setPaymentMethodActive(bool $active, Context $context): void
     {
-        if (!$this->hasContainer()) {
+        if ($this->container === null) {
             return; // @codeCoverageIgnore
         }
 
@@ -195,7 +198,7 @@ class KommandhubPaystackSW extends Plugin
      */
     private function getPaymentMethodId(): ?string
     {
-        if (!$this->hasContainer()) {
+        if ($this->container === null) {
             return null; // @codeCoverageIgnore
         }
 
@@ -216,7 +219,7 @@ class KommandhubPaystackSW extends Plugin
      */
     private function getCustomFieldsInstaller(): CustomFieldsInstaller
     {
-        if (!$this->hasContainer()) {
+        if ($this->container === null) {
             throw new \RuntimeException('Container is not available.'); // @codeCoverageIgnore
         }
 
@@ -234,13 +237,5 @@ class KommandhubPaystackSW extends Plugin
             $setRepo,
             $relationRepo
         );
-    }
-
-    /**
-     * Checks whether the DI container is available.
-     */
-    private function hasContainer(): bool
-    {
-        return isset($this->container);
     }
 }

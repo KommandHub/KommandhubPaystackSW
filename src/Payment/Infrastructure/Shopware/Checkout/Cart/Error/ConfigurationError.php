@@ -7,7 +7,7 @@ namespace Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\Checkout\Cart\Er
 use Shopware\Core\Checkout\Cart\Error\Error;
 
 /**
- * Class ConfigurationError
+ * Class ConfigurationError.
  *
  * Represents an error when the Paystack plugin is not correctly configured.
  * This error blocks the order process and is persistent across requests.

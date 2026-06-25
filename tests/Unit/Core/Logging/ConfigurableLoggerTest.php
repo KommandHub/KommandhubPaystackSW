@@ -35,7 +35,7 @@ class ConfigurableLoggerTest extends TestCase
     {
         $this->config->method('getBool')->with('enableDebugging')->willReturn(true);
         $this->config->method('getArray')->with('logLevels')->willReturn(['info', 'error']);
-        
+
         $this->innerLogger->expects($this->once())
             ->method('log')
             ->with('info', 'test message', []);
@@ -47,7 +47,7 @@ class ConfigurableLoggerTest extends TestCase
     {
         $this->config->method('getBool')->with('enableDebugging')->willReturn(true);
         $this->config->method('getArray')->with('logLevels')->willReturn(['error']);
-        
+
         $this->innerLogger->expects($this->never())->method('log');
 
         $this->configurableLogger->info('test message');
@@ -57,7 +57,7 @@ class ConfigurableLoggerTest extends TestCase
     {
         $this->config->method('getBool')->with('enableDebugging')->willReturn(true);
         $this->config->method('getArray')->with('logLevels')->willReturn([]);
-        
+
         $this->innerLogger->expects($this->once())
             ->method('log')
             ->with('info', 'test message', []);

@@ -129,7 +129,7 @@ class CartValidatorTest extends TestCase
         $paymentMethod->setHandlerIdentifier(PaystackPaymentHandler::class);
 
         $context->method('getPaymentMethod')->willReturn($paymentMethod);
-        
+
         $cart->method('getErrors')->willReturn(new ErrorCollection([new ConfigurationError()]));
 
         $this->validator->validate($cart, $errors, $context);

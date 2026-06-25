@@ -42,13 +42,13 @@ class ConfigurableLogger extends AbstractLogger
      */
     public function log($level, string|Stringable $message, array $context = []): void
     {
-        $level = (string) $level;
+        $levelString = is_scalar($level) || $level instanceof Stringable ? (string)$level : 'unknown';
 
-        if (!$this->shouldLog($level)) {
+        if (!$this->shouldLog($levelString)) {
             return;
         }
 
-        $this->logger->log($level, $message, $context);
+        $this->logger->log($levelString, $message, $context);
     }
 
     /**
