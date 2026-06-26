@@ -6,6 +6,8 @@ namespace Kommandhub\PaystackSW\Tests\Unit;
 
 use Kommandhub\PaystackSW\KommandhubPaystackSW;
 use Kommandhub\PaystackSW\Core\Installer\CustomFieldsInstaller;
+use Kommandhub\PaystackSW\Core\Installer\PaymentMethodInstaller;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\Handler\PaystackPaymentHandler;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
@@ -21,6 +23,8 @@ use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
 
 #[CoversClass(KommandhubPaystackSW::class)]
 #[UsesClass(CustomFieldsInstaller::class)]
+#[UsesClass(PaymentMethodInstaller::class)]
+#[UsesClass(PaystackPaymentHandler::class)]
 class KommandhubPaystackSWTest extends TestCase
 {
     private KommandhubPaystackSW $plugin;
@@ -67,10 +71,13 @@ class KommandhubPaystackSWTest extends TestCase
     public function testActivate(): void
     {
         $context = $this->createMock(ActivateContext::class);
-        $context->method('getContext')->willReturn(Context::createDefaultContext());
+        $context->method('getContext')->willReturn($shopwareContext = Context::createDefaultContext());
 
         $repository = $this->createMock(EntityRepository::class);
-        $this->container->method('get')->with('payment_method.repository')->willReturn($repository);
+        $this->container->method('get')->willReturnMap([
+            ['payment_method.repository', $repository],
+            [PluginIdProvider::class, $this->createMock(PluginIdProvider::class)],
+        ]);
 
         $idSearchResult = $this->createMock(IdSearchResult::class);
         $idSearchResult->method('firstId')->willReturn('payment-method-id');
@@ -78,7 +85,7 @@ class KommandhubPaystackSWTest extends TestCase
 
         $repository->expects($this->once())->method('update')->with([
             ['id' => 'payment-method-id', 'active' => true],
-        ]);
+        ], $shopwareContext);
 
         $this->plugin->activate($context);
     }
@@ -86,10 +93,13 @@ class KommandhubPaystackSWTest extends TestCase
     public function testDeactivate(): void
     {
         $context = $this->createMock(DeactivateContext::class);
-        $context->method('getContext')->willReturn(Context::createDefaultContext());
+        $context->method('getContext')->willReturn($shopwareContext = Context::createDefaultContext());
 
         $repository = $this->createMock(EntityRepository::class);
-        $this->container->method('get')->with('payment_method.repository')->willReturn($repository);
+        $this->container->method('get')->willReturnMap([
+            ['payment_method.repository', $repository],
+            [PluginIdProvider::class, $this->createMock(PluginIdProvider::class)],
+        ]);
 
         $idSearchResult = $this->createMock(IdSearchResult::class);
         $idSearchResult->method('firstId')->willReturn('payment-method-id');
@@ -97,7 +107,7 @@ class KommandhubPaystackSWTest extends TestCase
 
         $repository->expects($this->once())->method('update')->with([
             ['id' => 'payment-method-id', 'active' => false],
-        ]);
+        ], $shopwareContext);
 
         $this->plugin->deactivate($context);
     }
@@ -105,7 +115,7 @@ class KommandhubPaystackSWTest extends TestCase
     public function testUninstall(): void
     {
         $context = $this->createMock(UninstallContext::class);
-        $context->method('getContext')->willReturn(Context::createDefaultContext());
+        $context->method('getContext')->willReturn($shopwareContext = Context::createDefaultContext());
         $context->method('keepUserData')->willReturn(true);
 
         $repository = $this->createMock(EntityRepository::class);
@@ -114,6 +124,35 @@ class KommandhubPaystackSWTest extends TestCase
 
         $this->container->method('get')->willReturnMap([
             ['payment_method.repository', $repository],
+            [PluginIdProvider::class, $this->createMock(PluginIdProvider::class)],
+            ['custom_field_set.repository', $customFieldSetRepository],
+            ['custom_field_set_relation.repository', $customFieldSetRelationRepository],
+        ]);
+
+        $idSearchResult = $this->createMock(IdSearchResult::class);
+        $idSearchResult->method('firstId')->willReturn('payment-method-id');
+        $repository->method('searchIds')->willReturn($idSearchResult);
+
+        $repository->expects($this->once())->method('update')->with([
+            ['id' => 'payment-method-id', 'active' => false],
+        ], $shopwareContext);
+
+        $this->plugin->uninstall($context);
+    }
+
+    public function testUninstallWithoutKeepingUserData(): void
+    {
+        $context = $this->createMock(UninstallContext::class);
+        $context->method('getContext')->willReturn($shopwareContext = Context::createDefaultContext());
+        $context->method('keepUserData')->willReturn(false);
+
+        $repository = $this->createMock(EntityRepository::class);
+        $customFieldSetRepository = $this->createMock(EntityRepository::class);
+        $customFieldSetRelationRepository = $this->createMock(EntityRepository::class);
+
+        $this->container->method('get')->willReturnMap([
+            ['payment_method.repository', $repository],
+            [PluginIdProvider::class, $this->createMock(PluginIdProvider::class)],
             ['custom_field_set.repository', $customFieldSetRepository],
             ['custom_field_set_relation.repository', $customFieldSetRelationRepository],
         ]);
@@ -123,6 +162,12 @@ class KommandhubPaystackSWTest extends TestCase
         $repository->method('searchIds')->willReturn($idSearchResult);
 
         $repository->expects($this->once())->method('update');
+
+        $customFieldSetIdResult = $this->createMock(IdSearchResult::class);
+        $customFieldSetIdResult->method('getIds')->willReturn(['fieldset-id']);
+        $customFieldSetRepository->method('searchIds')->willReturn($customFieldSetIdResult);
+
+        $customFieldSetRepository->expects($this->once())->method('delete');
 
         $this->plugin->uninstall($context);
     }

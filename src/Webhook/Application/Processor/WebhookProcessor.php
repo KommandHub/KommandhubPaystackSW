@@ -22,6 +22,16 @@ class WebhookProcessor
     ) {
     }
 
+    /**
+     * Processes a Paystack webhook request.
+     *
+     * Validates the request signature, parses the payload, creates a
+     * corresponding Shopware event and dispatches it.
+     *
+     * @param Request $request The incoming webhook request
+     * @param Context $context The Shopware context
+     * @throws BadRequestHttpException If the payload is invalid
+     */
     public function process(Request $request, Context $context): void
     {
         $this->signatureValidator->validate($request);

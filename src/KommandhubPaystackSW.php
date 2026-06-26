@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW;
 
 use Kommandhub\PaystackSW\Core\Installer\CustomFieldsInstaller;
-use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\Handler\PaystackPaymentHandler;
+use Kommandhub\PaystackSW\Core\Installer\PaymentMethodInstaller;
 use Shopware\Core\Checkout\Payment\PaymentMethodCollection;
-use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin;
 use Shopware\Core\Framework\Plugin\Context\ActivateContext;
 use Shopware\Core\Framework\Plugin\Context\DeactivateContext;
@@ -82,7 +79,7 @@ class KommandhubPaystackSW extends Plugin
     {
         $context = $installContext->getContext();
 
-        $this->addOrActivatePaymentMethod($context);
+        $this->getPaymentMethodInstaller()->install(static::class, $context);
 
         $installer = $this->getCustomFieldsInstaller();
         $installer->install($context);
@@ -94,7 +91,7 @@ class KommandhubPaystackSW extends Plugin
      */
     public function activate(ActivateContext $activateContext): void
     {
-        $this->setPaymentMethodActive(true, $activateContext->getContext());
+        $this->getPaymentMethodInstaller()->activate($activateContext->getContext());
 
         parent::activate($activateContext);
     }
@@ -104,7 +101,7 @@ class KommandhubPaystackSW extends Plugin
      */
     public function deactivate(DeactivateContext $deactivateContext): void
     {
-        $this->setPaymentMethodActive(false, $deactivateContext->getContext());
+        $this->getPaymentMethodInstaller()->deactivate($deactivateContext->getContext());
 
         parent::deactivate($deactivateContext);
     }
@@ -119,7 +116,7 @@ class KommandhubPaystackSW extends Plugin
     {
         parent::uninstall($uninstallContext);
 
-        $this->setPaymentMethodActive(false, $uninstallContext->getContext());
+        $this->getPaymentMethodInstaller()->deactivate($uninstallContext->getContext());
 
         if ($uninstallContext->keepUserData()) {
             return;
@@ -129,89 +126,24 @@ class KommandhubPaystackSW extends Plugin
     }
 
     /**
-     * Creates payment method if it does not exist, otherwise ensures it is active.
+     * Returns configured payment method installer.
      */
-    private function addOrActivatePaymentMethod(Context $context): void
+    private function getPaymentMethodInstaller(): PaymentMethodInstaller
     {
         if ($this->container === null) {
-            return; // @codeCoverageIgnore
+            throw new \RuntimeException('Container is not available.'); // @codeCoverageIgnore
         }
 
-        $paymentId = $this->getPaymentMethodId();
-
-        // If already exists, just ensure it's active
-        if ($paymentId !== null) { // @codeCoverageIgnoreStart
-            $this->setPaymentMethodActive(true, $context);
-
-            return;
-        } // @codeCoverageIgnoreEnd
+        /** @var EntityRepository<PaymentMethodCollection> $paymentMethodRepo */
+        $paymentMethodRepo = $this->container->get('payment_method.repository');
 
         /** @var PluginIdProvider $pluginIdProvider */
         $pluginIdProvider = $this->container->get(PluginIdProvider::class);
 
-        $pluginId = $pluginIdProvider->getPluginIdByBaseClass(static::class, $context);
-
-        /** @var EntityRepository<PaymentMethodCollection> $repository */
-        $repository = $this->container->get('payment_method.repository');
-
-        $repository->create([
-            [
-                'handlerIdentifier' => PaystackPaymentHandler::class,
-                'name' => 'Pay with Paystack',
-                'description' => 'Securely pay with card, bank transfer or mobile money via Paystack.',
-                'pluginId' => $pluginId,
-                'technicalName' => 'kommandhub_paystack_payment',
-                'afterOrderEnabled' => true,
-                'active' => true,
-            ],
-        ], $context);
-    }
-
-    /**
-     * Activates or deactivates the Paystack payment method.
-     */
-    private function setPaymentMethodActive(bool $active, Context $context): void
-    {
-        if ($this->container === null) {
-            return; // @codeCoverageIgnore
-        }
-
-        $paymentId = $this->getPaymentMethodId();
-
-        if ($paymentId === null) {
-            return; // @codeCoverageIgnore
-        }
-
-        /** @var EntityRepository<PaymentMethodCollection> $repository */
-        $repository = $this->container->get('payment_method.repository');
-
-        $repository->update([
-            [
-                'id' => $paymentId,
-                'active' => $active,
-            ],
-        ], $context);
-    }
-
-    /**
-     * Returns the Paystack payment method ID if it exists.
-     */
-    private function getPaymentMethodId(): ?string
-    {
-        if ($this->container === null) {
-            return null; // @codeCoverageIgnore
-        }
-
-        /** @var EntityRepository $repository */
-        $repository = $this->container->get('payment_method.repository');
-
-        $criteria = (new Criteria())->addFilter(
-            new EqualsFilter('handlerIdentifier', PaystackPaymentHandler::class)
+        return new PaymentMethodInstaller(
+            $paymentMethodRepo,
+            $pluginIdProvider
         );
-
-        return $repository
-            ->searchIds($criteria, Context::createDefaultContext())
-            ->firstId();
     }
 
     /**

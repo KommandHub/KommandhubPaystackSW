@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Integration\Core\Plugin;
 
 use Kommandhub\PaystackSW\Core\Installer\CustomFieldsInstaller;
+use Kommandhub\PaystackSW\Core\Installer\PaymentMethodInstaller;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\Handler\PaystackPaymentHandler;
 use Kommandhub\PaystackSW\KommandhubPaystackSW;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
@@ -22,6 +24,8 @@ use Shopware\Core\Framework\Test\TestCaseBase\IntegrationTestBehaviour;
 
 #[CoversClass(KommandhubPaystackSW::class)]
 #[UsesClass(CustomFieldsInstaller::class)]
+#[UsesClass(PaymentMethodInstaller::class)]
+#[UsesClass(PaystackPaymentHandler::class)]
 class KommandhubPaystackSWTest extends TestCase
 {
     use IntegrationTestBehaviour;

@@ -107,6 +107,11 @@ class CustomFieldsInstaller
     ) {
     }
 
+    /**
+     * Installs the Paystack custom field set if it doesn't already exist.
+     *
+     * @param Context $context The Shopware context
+     */
     public function install(Context $context): void
     {
         if ($this->customFieldSetExists($context)) {
@@ -118,6 +123,11 @@ class CustomFieldsInstaller
         ], $context);
     }
 
+    /**
+     * Adds relations between the Paystack custom field set and the customer entity.
+     *
+     * @param Context $context The Shopware context
+     */
     public function addRelations(Context $context): void
     {
         $relationsToInsert = [];
@@ -140,6 +150,11 @@ class CustomFieldsInstaller
         $this->customFieldSetRelationRepository->upsert($relationsToInsert, $context);
     }
 
+    /**
+     * Removes the Paystack custom field set.
+     *
+     * @param Context $context The Shopware context
+     */
     public function uninstall(Context $context): void
     {
         $ids = $this->getCustomFieldSetIds($context);
@@ -154,7 +169,10 @@ class CustomFieldsInstaller
     }
 
     /**
-     * @return string[]
+     * Retrieves the IDs of the Paystack custom field set.
+     *
+     * @param Context $context The Shopware context
+     * @return string[] List of custom field set IDs
      */
     private function getCustomFieldSetIds(Context $context): array
     {
@@ -164,11 +182,25 @@ class CustomFieldsInstaller
         return $this->customFieldSetRepository->searchIds($criteria, $context)->getIds();
     }
 
+    /**
+     * Checks if the Paystack custom field set already exists.
+     *
+     * @param Context $context The Shopware context
+     * @return bool True if it exists, false otherwise
+     */
     private function customFieldSetExists(Context $context): bool
     {
         return $this->getCustomFieldSetIds($context) !== [];
     }
 
+    /**
+     * Checks if a relation already exists between a custom field set and an entity.
+     *
+     * @param Context $context The Shopware context
+     * @param string $customFieldSetId The ID of the custom field set
+     * @param string $entityName The name of the entity
+     * @return bool True if the relation exists, false otherwise
+     */
     private function customFieldSetRelationExists(Context $context, string $customFieldSetId, string $entityName): bool
     {
         $criteria = new Criteria();
