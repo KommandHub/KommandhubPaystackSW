@@ -172,6 +172,7 @@ class CustomFieldsInstaller
      * Retrieves the IDs of the Paystack custom field set.
      *
      * @param Context $context The Shopware context
+     *
      * @return string[] List of custom field set IDs
      */
     private function getCustomFieldSetIds(Context $context): array
@@ -186,6 +187,7 @@ class CustomFieldsInstaller
      * Checks if the Paystack custom field set already exists.
      *
      * @param Context $context The Shopware context
+     *
      * @return bool True if it exists, false otherwise
      */
     private function customFieldSetExists(Context $context): bool
@@ -199,6 +201,7 @@ class CustomFieldsInstaller
      * @param Context $context The Shopware context
      * @param string $customFieldSetId The ID of the custom field set
      * @param string $entityName The name of the entity
+     *
      * @return bool True if the relation exists, false otherwise
      */
     private function customFieldSetRelationExists(Context $context, string $customFieldSetId, string $entityName): bool

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\EntityHandler\OrderTransactionCaptureRefund;
 
-use Kommandhub\Foundation\EntityHandler\AbstractEntityReader;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\EntityHandler\AbstractEntityReader;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;

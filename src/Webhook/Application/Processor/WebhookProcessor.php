@@ -10,6 +10,7 @@ use Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger;
 use Shopware\Core\Framework\Context;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class WebhookProcessor
@@ -30,6 +31,8 @@ class WebhookProcessor
      *
      * @param Request $request The incoming webhook request
      * @param Context $context The Shopware context
+     *
+     * @throws AccessDeniedHttpException If the signature is invalid
      * @throws BadRequestHttpException If the payload is invalid
      */
     public function process(Request $request, Context $context): void

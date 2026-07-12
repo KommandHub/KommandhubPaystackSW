@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Payment\Application\Service;
 
-use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionReader;
-use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionWriter;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\EntityHandler\OrderTransactionReader;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\EntityHandler\OrderTransactionWriter;
 use Kommandhub\PaystackSW\Core\Util\PaystackConstants;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;

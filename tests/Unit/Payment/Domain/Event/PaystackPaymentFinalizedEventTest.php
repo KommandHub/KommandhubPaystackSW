@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Tests\Unit\Payment\Domain\Event;
 
-use Kommandhub\PaystackSW\Payment\Domain\Event\PaystackPaymentFinalizedEvent;
+use Kommandhub\PaystackSW\Payment\Domain\Event\PaymentFinalizedEvent;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
@@ -12,7 +12,7 @@ use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Framework\Context;
 
-#[CoversClass(PaystackPaymentFinalizedEvent::class)]
+#[CoversClass(PaymentFinalizedEvent::class)]
 class PaystackPaymentFinalizedEventTest extends TestCase
 {
     public function testEvent(): void
@@ -27,7 +27,7 @@ class PaystackPaymentFinalizedEventTest extends TestCase
 
         $context = Context::createDefaultContext();
 
-        $event = new PaystackPaymentFinalizedEvent($order, $transaction, $struct, $context);
+        $event = new PaymentFinalizedEvent($order, $transaction, $struct, $context);
 
         $this->assertSame($order, $event->getOrder());
         $this->assertSame($transaction, $event->getOrderTransaction());

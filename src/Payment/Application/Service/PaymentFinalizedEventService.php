@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Payment\Application\Service;
 
-use Kommandhub\PaystackSW\Payment\Domain\Event\PaystackPaymentFinalizedEvent;
+use Kommandhub\PaystackSW\Payment\Domain\Event\PaymentFinalizedEvent;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
@@ -41,7 +41,7 @@ readonly class PaymentFinalizedEventService
         Context $context
     ): void {
         $this->eventDispatcher->dispatch(
-            new PaystackPaymentFinalizedEvent($order, $orderTransaction, $paymentTransactionStruct, $context)
+            new PaymentFinalizedEvent($order, $orderTransaction, $paymentTransactionStruct, $context)
         );
     }
 }

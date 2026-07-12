@@ -42,6 +42,7 @@ class PaymentMethodInstallerTest extends TestCase
         $this->paymentMethodRepository->expects($this->once())->method('update')->with([
             [
                 'id' => $paymentId,
+                'handlerIdentifier' => PaystackPaymentHandler::class,
                 'active' => true,
             ],
         ], $this->context);

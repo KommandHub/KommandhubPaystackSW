@@ -34,7 +34,13 @@ readonly class PaymentMethodInstaller
         $paymentId = $this->getPaymentMethodId($context);
 
         if ($paymentId !== null) {
-            $this->activate($context);
+            $this->paymentMethodRepository->update([
+                [
+                    'id' => $paymentId,
+                    'handlerIdentifier' => PaystackPaymentHandler::class,
+                    'active' => true,
+                ],
+            ], $context);
 
             return;
         }
@@ -100,10 +106,24 @@ readonly class PaymentMethodInstaller
      * Retrieves the ID of the Paystack payment method if it exists.
      *
      * @param Context $context The Shopware context
+     *
      * @return string|null The payment method ID or null if not found
      */
     private function getPaymentMethodId(Context $context): ?string
     {
+        $criteria = new Criteria();
+        $criteria->addFilter(
+            new EqualsFilter('technicalName', 'kommandhub_paystack_payment')
+        );
+
+        $paymentId = $this->paymentMethodRepository
+            ->searchIds($criteria, $context)
+            ->firstId();
+
+        if ($paymentId !== null) {
+            return $paymentId;
+        }
+
         $criteria = (new Criteria())->addFilter(
             new EqualsFilter('handlerIdentifier', PaystackPaymentHandler::class)
         );

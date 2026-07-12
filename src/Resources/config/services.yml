@@ -6,7 +6,7 @@ services:
 
   Kommandhub\PaystackSW\:
     resource: '../../*'
-    exclude: '../../{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
+    exclude: '../../{DependencyInjection,Entity,Migrations,Tests,Kernel.php,Payment/Infrastructure/Shopware/EntityHandler/Abstract*}'
 
   Kommandhub\PaystackSW\Payment\Application\Processor\TransactionVerificationProcessorInterface:
     alias: Kommandhub\PaystackSW\Payment\Application\Processor\TransactionVerificationProcessor

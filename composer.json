@@ -23,7 +23,6 @@
         }
     ],
     "require": {
-        "kommandhub/foundation-sw": "^1.0.1",
         "shopware/core": "~6.6.0 || ~6.7.0",
         "shopware/fixture-bundle": "^0.1.0"
     },

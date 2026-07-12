@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Tests\Unit\Payment\Application\Service;
 
-use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionReader;
-use Kommandhub\Foundation\EntityHandler\OrderTransaction\OrderTransactionWriter;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\EntityHandler\OrderTransactionReader;
+use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\EntityHandler\OrderTransactionWriter;
 use Kommandhub\PaystackSW\Core\Util\PaystackConstants;
 use Kommandhub\PaystackSW\Payment\Application\Service\OrderTransactionService;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
@@ -17,6 +18,7 @@ use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Framework\Context;
 
 #[CoversClass(OrderTransactionService::class)]
+#[UsesClass(PaystackConstants::class)]
 class OrderTransactionServiceTest extends TestCase
 {
     private OrderTransactionReader $reader;
