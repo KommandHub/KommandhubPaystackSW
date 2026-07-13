@@ -57,5 +57,13 @@
     "detail": {
       "tabPaystack": "Paystack"
     }
+  },
+  "sw-privileges": {
+    "additional_permissions": {
+      "paystack": {
+        "label": "Paystack",
+        "refund": "Effectuer des remboursements Paystack"
+      }
+    }
   }
 }

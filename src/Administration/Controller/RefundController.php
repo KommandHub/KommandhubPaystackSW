@@ -53,7 +53,7 @@ class RefundController extends AbstractController
         name: 'api.action.paystack.refund',
         defaults: [
             PlatformRequest::ATTRIBUTE_LOGIN_REQUIRED => true,
-            '_acl' => ['order:update'],
+            '_acl' => ['paystack.refund'],
         ],
         methods: [Request::METHOD_POST]
     )]

@@ -13,6 +13,7 @@ Shopware.Service().register('paystackRefundService', (container) => {
     return new PaystackRefundService(initContainer.httpClient, container.loginService);
 });
 
+import './acl';
 import './module/sw-order/page/sw-order-detail'
 import './view/kommandhub-paystack-detail'
 

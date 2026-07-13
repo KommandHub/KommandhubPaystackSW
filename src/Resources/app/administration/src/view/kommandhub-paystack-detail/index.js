@@ -272,7 +272,7 @@ Shopware.Component.register('kommandhub-paystack-detail', {
          */
         canRefund() {
             return this.refundEnabled
-                && this.acl.can('order.editor')
+                && this.acl.can('paystack.refund')
                 && !this.isTransactionRefunded
                 && this.maxRefundableAmount >= this.minRefundableAmount;
         },
