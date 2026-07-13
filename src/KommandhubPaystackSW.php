@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW;
 
-use Kommandhub\PaystackSW\Core\Installer\CustomFieldsInstaller;
-use Kommandhub\PaystackSW\Core\Installer\PaymentMethodInstaller;
+use Kommandhub\PaystackSW\Installer\CustomFieldsInstaller;
+use Kommandhub\PaystackSW\Installer\PaymentMethodInstaller;
 use Shopware\Core\Checkout\Payment\PaymentMethodCollection;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\Plugin;
@@ -13,6 +13,7 @@ use Shopware\Core\Framework\Plugin\Context\ActivateContext;
 use Shopware\Core\Framework\Plugin\Context\DeactivateContext;
 use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
+use Shopware\Core\Framework\Plugin\Context\UpdateContext;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Config\Loader\DelegatingLoader;
@@ -78,6 +79,27 @@ class KommandhubPaystackSW extends Plugin
     public function install(InstallContext $installContext): void
     {
         $context = $installContext->getContext();
+
+        $this->getPaymentMethodInstaller()->install(static::class, $context);
+
+        $installer = $this->getCustomFieldsInstaller();
+        $installer->install($context);
+        $installer->addRelations($context);
+    }
+
+    /**
+     * Plugin update lifecycle hook.
+     *
+     * Re-runs the installers so the stored payment-method handlerIdentifier and
+     * custom fields are migrated when classes move between versions. Without
+     * this, an update (as opposed to a fresh install) leaves a dangling handler
+     * identifier and checkout breaks.
+     */
+    public function update(UpdateContext $updateContext): void
+    {
+        parent::update($updateContext);
+
+        $context = $updateContext->getContext();
 
         $this->getPaymentMethodInstaller()->install(static::class, $context);
 

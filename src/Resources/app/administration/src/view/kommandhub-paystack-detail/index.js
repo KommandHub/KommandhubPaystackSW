@@ -22,6 +22,7 @@ Shopware.Component.register('kommandhub-paystack-detail', {
     inject: [
         'repositoryFactory',
         'paystackRefundService',
+        'systemConfigApiService',
     ],
 
     props: {
@@ -52,6 +53,7 @@ Shopware.Component.register('kommandhub-paystack-detail', {
             captures: [],
             refunds: [],
             isLoading: false,
+            config: {},
         };
     },
 
@@ -107,8 +109,8 @@ Shopware.Component.register('kommandhub-paystack-detail', {
             }
 
             return this.order.transactions.find((transaction) => {
-                return transaction.customFields
-                    && transaction.customFields.paystack_reference;
+                return transaction.paymentMethod?.handlerIdentifier === 'Kommandhub\\PaystackSW\\Checkout\\Payment\\Handler\\PaystackPaymentHandler'
+                    || (transaction.customFields && transaction.customFields.paystack_reference);
             });
         },
 
@@ -331,6 +333,36 @@ Shopware.Component.register('kommandhub-paystack-detail', {
         paystackIcon() {
             return icon;
         },
+        /**
+         * Returns whether refunds are enabled.
+         *
+         * @returns {Boolean}
+         */
+        refundEnabled() {
+            return this.config['KommandhubPaystackSW.config.refundEnabled'] !== false;
+        },
+        /**
+         * Returns the minimum refund amount for Paystack (in minor units).
+         *
+         * @returns {Number}
+         */
+        minPaystackRefundAmount() {
+            return this.config['KommandhubPaystackSW.config.minimumRefundAmount'] ?? 50;
+        },
+        /**
+         * Returns the minimum refund amount in major units.
+         *
+         * @returns {Number}
+         */
+        minRefundableAmount() {
+            const currencyDecimals = {
+                JPY: 0, XOF: 0, XAF: 0, KMF: 0, GNF: 0, CLP: 0, RWF: 0, UGX: 0,
+                BHD: 3, IQD: 3, JOD: 3, KWD: 3, LYD: 3, OMR: 3, TND: 3,
+            };
+
+            const decimals = currencyDecimals[this.refundCurrency] ?? 2;
+            return this.minPaystackRefundAmount / (10 ** decimals);
+        },
     },
 
     /** @private */
@@ -346,9 +378,16 @@ Shopware.Component.register('kommandhub-paystack-detail', {
     },
 
     methods: {
-        createdComponent() {
+        async createdComponent() {
             if (this.paystackTransaction?.id) {
                 void this.loadCapturesAndRefunds();
+            }
+
+            if (this.order?.salesChannelId) {
+                this.config = await this.systemConfigApiService.getValues(
+                    'KommandhubPaystackSW.config',
+                    this.order.salesChannelId
+                );
             }
         },
         /**
@@ -435,12 +474,14 @@ Shopware.Component.register('kommandhub-paystack-detail', {
          * @param {Object} item
          */
         onOpenRefundModal(item) {
-            this.activeTransaction = item;
-            this.refundCurrency = item.currency;
+            this.activeTransaction = this.paystackTransaction;
+            this.activeCapture = item.orderTransactionId ? null : item;
+            this.refundCurrency = this.paystackTransaction.customFields?.paystack_currency;
 
             const maxAmount = Number(this.maxRefundableAmount);
+            const minAmount = Number(this.minRefundableAmount);
 
-            this.refundAmount = maxAmount > 0 ? maxAmount : 0.01;
+            this.refundAmount = maxAmount > minAmount ? maxAmount : minAmount;
 
             this.showRefundModal = true;
         },
@@ -496,6 +537,15 @@ Shopware.Component.register('kommandhub-paystack-detail', {
          * Initiates the refund process through the Paystack refund service.
          */
         onConfirmRefund() {
+            if (this.refundAmount < this.minRefundableAmount) {
+                this.createNotificationError({
+                    message: this.$t('kommandhub-paystack-detail.refund.errorAmountTooLow', {
+                        minAmount: this.currencyFilter(this.minRefundableAmount, this.refundCurrency),
+                    }),
+                });
+                return;
+            }
+
             if (this.refundAmount > this.maxRefundableAmount) {
                 this.createNotificationError({
                     message: this.$t('kommandhub-paystack-detail.refund.errorAmountTooHigh', {
@@ -508,9 +558,11 @@ Shopware.Component.register('kommandhub-paystack-detail', {
             this.isRefundLoading = true;
 
             const payload = {
-                transaction: this.activeTransaction.reference,
+                transaction: this.activeTransaction.customFields?.paystack_reference,
                 orderTransactionId: this.activeTransaction.id,
-                amount: Math.round(this.refundAmount * 100),
+                orderTransactionCaptureId: this.activeCapture?.id,
+                // Major units; server converts to minor units per currency decimals.
+                amount: this.refundAmount,
                 currency: this.refundCurrency,
                 customer_note: this.customerNote,
                 merchant_note: this.merchantNote,

@@ -1,5 +1,5 @@
-kommandhub_paystack_storefront:
-    resource: ../../Storefront/Controller/
+kommandhub_paystack_bank_verification:
+    resource: ../../BankVerification/Controller/
     type: attribute
 
 kommandhub_paystack_administration:
@@ -7,5 +7,5 @@ kommandhub_paystack_administration:
     type: attribute
 
 kommandhub_paystack_webhook:
-    resource: ../../Webhook/Presentation/Controller/
+    resource: ../../Webhook/Controller/
     type: attribute

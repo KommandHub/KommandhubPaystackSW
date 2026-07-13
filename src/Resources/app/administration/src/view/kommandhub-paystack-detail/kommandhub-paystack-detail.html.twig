@@ -62,7 +62,7 @@
                     <template #actions="{ item }">
                         {% block kommandhub_paystack_detail_grid_actions_refund %}
                         <sw-context-menu-item
-                                v-if="!isTransactionRefunded"
+                                v-if="!isTransactionRefunded && refundEnabled"
                                 @click="onOpenRefundModal(item)"
                         >
                             {{ $t('kommandhub-paystack-detail.grid.refund') }}
@@ -262,7 +262,7 @@
                     :placeholder="$t('kommandhub-paystack-detail.refund.amountPlaceholder')"
                     :help-text="$t('kommandhub-paystack-detail.refund.amountHelpText')"
                     number-type="float"
-                    :min="0.01"
+                    :min="minRefundableAmount"
                     :max="Number(maxRefundableAmount)"
                     :step="0.50"
             />

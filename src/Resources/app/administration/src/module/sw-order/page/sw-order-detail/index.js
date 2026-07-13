@@ -2,11 +2,14 @@ import template from './sw-order-detail.html.twig';
 
 const { Criteria } = Shopware.Data;
 
+const PAYSTACK_HANDLER_IDENTIFIER = 'Kommandhub\\PaystackSW\\Checkout\\Payment\\Handler\\PaystackPaymentHandler';
+
 Shopware.Component.override('sw-order-detail', {
     template,
 
     inject: [
         'repositoryFactory',
+        'systemConfigApiService',
     ],
 
     props: {
@@ -21,6 +24,7 @@ Shopware.Component.override('sw-order-detail', {
         return {
             isLoading: true,
             paystackOrder: null,
+            config: {},
         };
     },
 
@@ -64,8 +68,7 @@ Shopware.Component.override('sw-order-detail', {
 
             return this.paystackOrder.transactions.some(
                 (transaction) =>
-                    transaction.paymentMethod?.handlerIdentifier ===
-                    'Kommandhub\\PaystackSW\\Payment\\Infrastructure\\Shopware\\Handler\\PaystackPaymentHandler'
+                    transaction.paymentMethod?.handlerIdentifier === PAYSTACK_HANDLER_IDENTIFIER
             );
         },
     },
@@ -100,6 +103,13 @@ Shopware.Component.override('sw-order-detail', {
                     Shopware.Context.api,
                     this.orderCriteria
                 );
+
+                if (this.paystackOrder?.salesChannelId) {
+                    this.config = await this.systemConfigApiService.getValues(
+                        'KommandhubPaystackSW.config',
+                        this.paystackOrder.salesChannelId
+                    );
+                }
             } catch (error) {
                 if (this.isAbortError(error)) {
                     return;

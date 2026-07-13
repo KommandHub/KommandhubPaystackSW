@@ -258,6 +258,29 @@
     </card>
 
     <card>
+        <title>Refund Settings</title>
+        <title lang="de-DE">Erstattungseinstellungen</title>
+
+        <input-field type="bool">
+            <name>refundEnabled</name>
+            <label>Enable Refunds</label>
+            <label lang="de-DE">Erstattungen aktivieren</label>
+            <defaultValue>true</defaultValue>
+            <helpText>Enable or disable the Paystack refund feature.</helpText>
+            <helpText lang="de-DE">Aktivieren oder deaktivieren Sie die Paystack-Erstattungsfunktion.</helpText>
+        </input-field>
+
+        <input-field type="int">
+            <name>minimumRefundAmount</name>
+            <label>Minimum Refund Amount</label>
+            <label lang="de-DE">Mindesterstattungsbetrag</label>
+            <defaultValue>50</defaultValue>
+            <helpText>The minimum amount allowed for a refund in minor units (e.g., 50 for 0.50 NGN). Paystack requires a minimum of 50.</helpText>
+            <helpText lang="de-DE">Der zulässige Mindestbetrag für eine Erstattung in kleineren Einheiten (z. B. 50 für 0,50 NGN). Paystack erfordert mindestens 50.</helpText>
+        </input-field>
+    </card>
+
+    <card>
         <title>Debugging</title>
         <title lang="de-DE">Fehlerdiagnose</title>
 

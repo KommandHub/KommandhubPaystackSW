@@ -27,7 +27,8 @@
       "merchantNoteLabel": "Note marchand",
       "merchantNotePlaceholder": "Note du marchand pour lui-même",
       "confirmButton": "Traiter le remboursement",
-      "errorAmountTooHigh": "Le montant du remboursement ne peut pas dépasser {maxAmount}."
+      "errorAmountTooHigh": "Le montant du remboursement ne peut pas dépasser {maxAmount}.",
+      "errorAmountTooLow": "Le montant du remboursement doit être d'au moins {minAmount}."
     },
     "captures": {
       "grid": {

@@ -5,14 +5,20 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Integration\Administration\Controller;
 
 use Kommandhub\PaystackSW\Administration\Controller\RefundController;
-use Kommandhub\PaystackSW\Payment\Application\Service\OrderTransactionService;
-use Kommandhub\PaystackSW\Payment\Infrastructure\Paystack\Paystack;
-use Kommandhub\PaystackSW\Payment\Infrastructure\Paystack\Api\Resources\Refund;
+use Kommandhub\PaystackSW\Checkout\Payment\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Client\PaystackClient;
+use Kommandhub\PaystackSW\Client\Resource\Refund;
+use Kommandhub\PaystackSW\Setting\Service\Config;
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
+use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
+use Shopware\Core\System\Currency\CurrencyEntity;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineState\StateMachineStateEntity;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,22 +30,33 @@ use Symfony\Component\HttpFoundation\Response;
  * and asserting the response, similar to how a user would interact with the API.
  */
 #[CoversClass(RefundController::class)]
+#[UsesClass(PaystackCurrencyHelper::class)]
 class RefundControllerTest extends TestCase
 {
-    private Paystack $paystack;
+    private PaystackClient $paystack;
     private Refund $refundResource;
     private OrderTransactionService $orderTransactionService;
+    private Config&MockObject $config;
     private RefundController $controller;
 
     protected function setUp(): void
     {
-        $this->paystack = $this->createMock(Paystack::class);
+        $this->paystack = $this->createMock(PaystackClient::class);
         $this->refundResource = $this->createMock(Refund::class);
         $this->orderTransactionService = $this->createMock(OrderTransactionService::class);
+        $this->config = $this->createMock(Config::class);
 
         $this->paystack->method('refunds')->willReturn($this->refundResource);
 
-        $this->controller = new RefundController($this->paystack, $this->orderTransactionService);
+        $this->controller = new RefundController(
+            $this->paystack,
+            $this->orderTransactionService,
+            $this->config
+        );
+
+        $this->config->method('getBool')
+            ->with('refundEnabled', $this->anything())
+            ->willReturn(true);
     }
 
     /**
@@ -49,7 +66,7 @@ class RefundControllerTest extends TestCase
     {
         $payload = [
             'transaction' => 'T12345',
-            'amount' => 5000,
+            'amount' => 50, // major units; server converts to 5000 minor (NGN)
             'reason' => 'Customer request',
             'customer_note' => 'Please refund to original source',
             'merchant_note' => 'Approved by support',
@@ -82,6 +99,8 @@ class RefundControllerTest extends TestCase
         $this->orderTransactionService->method('findOneByPaystackReference')
             ->with('T12345', $context)
             ->willReturn($this->createRefundableTransaction());
+
+        $this->config->method('get')->with('minimumRefundAmount')->willReturn(50);
 
         $response = $this->controller->refund($request, $context);
 
@@ -126,6 +145,8 @@ class RefundControllerTest extends TestCase
             ->with('T12345', $context)
             ->willReturn($this->createRefundableTransaction());
 
+        $this->config->method('get')->with('minimumRefundAmount')->willReturn(50);
+
         $this->refundResource->expects($this->once())
             ->method('create')
             ->with([
@@ -162,6 +183,88 @@ class RefundControllerTest extends TestCase
         $this->assertEquals('Transaction is not in a refundable state', $responseData['error']);
     }
 
+    public function testRefundFailsWhenAmountIsTooLow(): void
+    {
+        $payload = [
+            'transaction' => 'T12345',
+            'amount' => 0.49, // Converts to 49 minor units (NGN)
+        ];
+
+        $request = new Request([], $payload);
+        $request->setMethod('POST');
+        $context = Context::createDefaultContext();
+
+        $this->orderTransactionService->method('findOneByPaystackReference')
+            ->with('T12345', $context)
+            ->willReturn($this->createRefundableTransaction());
+
+        $this->config->method('get')->with('minimumRefundAmount')->willReturn(50);
+
+        $response = $this->controller->refund($request, $context);
+
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $responseData = json_decode($response->getContent(), true);
+        $this->assertEquals('Refund amount must be at least 0.5 NGN', $responseData['error']);
+    }
+
+    public function testRefundFailsWhenDisabledInConfig(): void
+    {
+        $payload = [
+            'transaction' => 'T12345',
+        ];
+
+        $request = new Request([], $payload);
+        $request->setMethod('POST');
+        $context = Context::createDefaultContext();
+
+        $this->orderTransactionService->method('findOneByPaystackReference')
+            ->with('T12345', $context)
+            ->willReturn($this->createRefundableTransaction());
+
+        $this->config = $this->createMock(Config::class);
+        $this->controller = new RefundController(
+            $this->paystack,
+            $this->orderTransactionService,
+            $this->config
+        );
+
+        $this->config->expects($this->once())
+            ->method('getBool')
+            ->with('refundEnabled', 'sales-channel-id')
+            ->willReturn(false);
+
+        $response = $this->controller->refund($request, $context);
+
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $responseData = json_decode($response->getContent(), true);
+        $this->assertEquals('Refund feature is currently disabled', $responseData['error']);
+    }
+
+    public function testRefundUsesConfiguredMinimumAmount(): void
+    {
+        $payload = [
+            'transaction' => 'T12345',
+            'amount' => 0.99, // Converts to 99 minor units (NGN)
+        ];
+
+        $request = new Request([], $payload);
+        $request->setMethod('POST');
+        $context = Context::createDefaultContext();
+
+        $this->orderTransactionService->method('findOneByPaystackReference')
+            ->with('T12345', $context)
+            ->willReturn($this->createRefundableTransaction());
+
+        // Set minimum to 100 minor units (1.00 NGN)
+        $this->config->method('get')->with('minimumRefundAmount')->willReturn(100);
+
+        $response = $this->controller->refund($request, $context);
+
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $responseData = json_decode($response->getContent(), true);
+        $this->assertEquals('Refund amount must be at least 1 NGN', $responseData['error']);
+    }
+
     private function createRefundableTransaction(): OrderTransactionEntity
     {
         $transaction = new OrderTransactionEntity();
@@ -170,6 +273,13 @@ class RefundControllerTest extends TestCase
         $state = new StateMachineStateEntity();
         $state->setTechnicalName(OrderTransactionStates::STATE_PAID);
         $transaction->setStateMachineState($state);
+
+        $currency = new CurrencyEntity();
+        $currency->setIsoCode('NGN');
+        $order = new OrderEntity();
+        $order->setCurrency($currency);
+        $order->setSalesChannelId('sales-channel-id');
+        $transaction->setOrder($order);
 
         return $transaction;
     }

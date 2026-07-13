@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Tests\Unit;
 
 use Kommandhub\PaystackSW\KommandhubPaystackSW;
-use Kommandhub\PaystackSW\Core\Installer\CustomFieldsInstaller;
-use Kommandhub\PaystackSW\Core\Installer\PaymentMethodInstaller;
-use Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\Handler\PaystackPaymentHandler;
+use Kommandhub\PaystackSW\Installer\CustomFieldsInstaller;
+use Kommandhub\PaystackSW\Installer\PaymentMethodInstaller;
+use Kommandhub\PaystackSW\Checkout\Payment\Handler\PaystackPaymentHandler;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;

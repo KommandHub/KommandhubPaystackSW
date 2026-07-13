@@ -6,42 +6,46 @@ services:
 
   Kommandhub\PaystackSW\:
     resource: '../../*'
-    exclude: '../../{DependencyInjection,Entity,Migrations,Tests,Kernel.php,Payment/Infrastructure/Shopware/EntityHandler/Abstract*}'
+    exclude: '../../{DependencyInjection,Entity,Migrations,Tests,Kernel.php,DataAbstractionLayer/OrderTransaction/Abstract*}'
 
-  Kommandhub\PaystackSW\Payment\Application\Processor\TransactionVerificationProcessorInterface:
-    alias: Kommandhub\PaystackSW\Payment\Application\Processor\TransactionVerificationProcessor
+  Kommandhub\PaystackSW\Checkout\Payment\Service\TransactionVerificationProcessorInterface:
+    alias: Kommandhub\PaystackSW\Checkout\Payment\Service\TransactionVerificationProcessor
 
-  Kommandhub\PaystackSW\Payment\Application\Processor\TransactionMetadataProcessorInterface:
-    alias: Kommandhub\PaystackSW\Payment\Application\Processor\TransactionMetadataProcessor
+  Kommandhub\PaystackSW\Checkout\Payment\Service\TransactionMetadataProcessorInterface:
+    alias: Kommandhub\PaystackSW\Checkout\Payment\Service\TransactionMetadataProcessor
 
-  Kommandhub\PaystackSW\Payment\Infrastructure\Shopware\Handler\PaystackPaymentHandler:
+  Kommandhub\PaystackSW\Client\Http\HttpClientInterface:
+    alias: Kommandhub\PaystackSW\Client\Http\PaystackHttpClient
+
+  Kommandhub\PaystackSW\Checkout\Payment\Handler\PaystackPaymentHandler:
     tags:
       - { name: 'shopware.payment_handler' }
 
   Kommandhub\PaystackSW\Administration\Controller\RefundController:
     arguments:
-      $paystack: '@Kommandhub\PaystackSW\Payment\Infrastructure\Paystack\Paystack'
+      $paystack: '@Kommandhub\PaystackSW\Client\PaystackClient'
+      $config: '@Kommandhub\PaystackSW\Setting\Service\Config'
     tags:
       - { name: 'container.service', method: 'setContainer' }
     calls:
       - [setContainer, ['@service_container']]
     public: true
 
-  Kommandhub\PaystackSW\Webhook\Presentation\Controller\WebhookController:
+  Kommandhub\PaystackSW\Webhook\Controller\WebhookController:
     public: true
     calls:
       - [ setContainer, [ '@service_container' ] ]
     tags: [ ]
 
-  Kommandhub\PaystackSW\Webhook\Presentation\Listener\WebhookEventListener:
+  Kommandhub\PaystackSW\Webhook\Subscriber\WebhookSubscriber:
     arguments:
       $orderTransactionCaptureRefundRepository: '@order_transaction_capture_refund.repository'
 
-  Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger:
+  Kommandhub\PaystackSW\Logging\ConfigurableLogger:
     arguments:
       $logger: '@monolog.logger.paystack_channel'
     tags:
       - { name: 'monolog.logger', channel: 'paystack_channel' }
 
   Psr\Log\LoggerInterface:
-    alias: Kommandhub\PaystackSW\Core\Logging\ConfigurableLogger
+    alias: Kommandhub\PaystackSW\Logging\ConfigurableLogger

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Administration\Controller;
 
-use Kommandhub\PaystackSW\Payment\Application\Service\OrderTransactionService;
-use Kommandhub\PaystackSW\Payment\Infrastructure\Paystack\Paystack;
+use Kommandhub\PaystackSW\Util\PaystackConstants;
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
+use Kommandhub\PaystackSW\Checkout\Payment\Service\OrderTransactionService;
+use Kommandhub\PaystackSW\Client\PaystackClient;
+use Kommandhub\PaystackSW\Setting\Service\Config;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Framework\Routing\ApiRouteScope;
@@ -25,12 +28,13 @@ class RefundController extends AbstractController
     /**
      * RefundController constructor.
      *
-     * @param Paystack $paystack
+     * @param PaystackClient $paystack
      * @param OrderTransactionService $orderTransactionService
      */
     public function __construct(
-        private readonly Paystack $paystack,
-        private readonly OrderTransactionService $orderTransactionService
+        private readonly PaystackClient $paystack,
+        private readonly OrderTransactionService $orderTransactionService,
+        private readonly Config $config
     ) {
     }
 
@@ -66,6 +70,12 @@ class RefundController extends AbstractController
             return $this->errorResponse('Transaction is not in a refundable state');
         }
 
+        $salesChannelId = $transaction->getOrder()?->getSalesChannelId();
+
+        if (!$this->config->getBool('refundEnabled', $salesChannelId)) {
+            return $this->errorResponse('Refund feature is currently disabled');
+        }
+
         $amount = $request->request->get('amount');
 
         if ($amount !== null && (!is_numeric($amount) || (float)$amount <= 0.0)) {
@@ -82,7 +92,21 @@ class RefundController extends AbstractController
         ];
 
         if ($amount !== null) {
-            $payload['amount'] = $amount;
+            $currencyIso = $transaction->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN';
+            $minorAmount = PaystackCurrencyHelper::toMinorUnit((float)$amount, $currencyIso);
+
+            $minAmountLimit = $this->config->get('minimumRefundAmount', PaystackConstants::MINIMUM_REFUND_AMOUNT, $salesChannelId);
+            $minAmountLimit = (int) $minAmountLimit;
+
+            if ($minorAmount < $minAmountLimit) {
+                return $this->errorResponse(sprintf(
+                    'Refund amount must be at least %s %s',
+                    PaystackCurrencyHelper::fromMinorUnit($minAmountLimit, $currencyIso),
+                    $currencyIso
+                ));
+            }
+
+            $payload['amount'] = $minorAmount;
         }
 
         if (is_string($customerNote) && trim($customerNote) !== '') {

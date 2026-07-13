@@ -27,7 +27,8 @@
       "merchantNoteLabel": "Merchant Note",
       "merchantNotePlaceholder": "Note from the merchant to themselves",
       "confirmButton": "Process Refund",
-      "errorAmountTooHigh": "The refund amount cannot exceed {maxAmount}."
+      "errorAmountTooHigh": "The refund amount cannot exceed {maxAmount}.",
+      "errorAmountTooLow": "The refund amount must be at least {minAmount}."
     },
     "captures": {
       "grid": {
