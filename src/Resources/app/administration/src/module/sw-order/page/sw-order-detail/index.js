@@ -1,8 +1,7 @@
 import template from './sw-order-detail.html.twig';
+import { PAYSTACK_HANDLER_IDENTIFIER, isAbortError } from '../../../../util/paystack';
 
 const { Criteria } = Shopware.Data;
-
-const PAYSTACK_HANDLER_IDENTIFIER = 'Kommandhub\\PaystackSW\\Checkout\\Payment\\Handler\\PaystackPaymentHandler';
 
 Shopware.Component.override('sw-order-detail', {
     template,
@@ -111,23 +110,14 @@ Shopware.Component.override('sw-order-detail', {
                     );
                 }
             } catch (error) {
-                if (this.isAbortError(error)) {
+                if (isAbortError(error)) {
                     return;
                 }
 
-                console.error(
-                    '[Paystack] Failed to load order details.',
-                    error
-                );
+                console.error('[Paystack] Failed to load order details:', error?.message ?? error);
             } finally {
                 this.isLoading = false;
             }
-        },
-
-        isAbortError(error) {
-            return error?.code === 'ECONNABORTED'
-                || error?.name === 'AbortError'
-                || error?.message === 'Request aborted';
         },
     },
 });

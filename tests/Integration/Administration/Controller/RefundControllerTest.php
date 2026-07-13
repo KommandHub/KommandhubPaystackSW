@@ -14,8 +14,10 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
+use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureCollection;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\System\Currency\CurrencyEntity;
@@ -265,6 +267,30 @@ class RefundControllerTest extends TestCase
         $this->assertEquals('Refund amount must be at least 1 NGN', $responseData['error']);
     }
 
+    public function testRefundFailsWhenAmountExceedsBalance(): void
+    {
+        $payload = [
+            'transaction' => 'T12345',
+            'amount' => 200, // 20000 minor > 10000 refundable balance (100 NGN)
+        ];
+
+        $request = new Request([], $payload);
+        $request->setMethod('POST');
+        $context = Context::createDefaultContext();
+
+        $this->orderTransactionService->method('findOneByPaystackReference')
+            ->with('T12345', $context)
+            ->willReturn($this->createRefundableTransaction());
+
+        $this->refundResource->expects($this->never())->method('create');
+
+        $response = $this->controller->refund($request, $context);
+
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $responseData = json_decode($response->getContent(), true);
+        $this->assertEquals('Refund amount exceeds the refundable balance of 100 NGN', $responseData['error']);
+    }
+
     private function createRefundableTransaction(): OrderTransactionEntity
     {
         $transaction = new OrderTransactionEntity();
@@ -273,6 +299,12 @@ class RefundControllerTest extends TestCase
         $state = new StateMachineStateEntity();
         $state->setTechnicalName(OrderTransactionStates::STATE_PAID);
         $transaction->setStateMachineState($state);
+
+        // No captures yet => refundable base is the transaction total (100 NGN).
+        $transaction->setCaptures(new OrderTransactionCaptureCollection());
+        $amount = $this->createMock(CalculatedPrice::class);
+        $amount->method('getTotalPrice')->willReturn(100.0);
+        $transaction->setAmount($amount);
 
         $currency = new CurrencyEntity();
         $currency->setIsoCode('NGN');

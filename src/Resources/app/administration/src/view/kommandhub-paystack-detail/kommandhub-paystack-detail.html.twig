@@ -62,7 +62,7 @@
                     <template #actions="{ item }">
                         {% block kommandhub_paystack_detail_grid_actions_refund %}
                         <sw-context-menu-item
-                                v-if="!isTransactionRefunded && refundEnabled"
+                                v-if="canRefund"
                                 @click="onOpenRefundModal(item)"
                         >
                             {{ $t('kommandhub-paystack-detail.grid.refund') }}
@@ -101,11 +101,12 @@
                 {% endblock %}
 
                 {% block kommandhub_paystack_detail_empty_state %}
-                <sw-empty-state
+                <mt-empty-state
                         v-else
-                        :title="$t('kommandhub-paystack-detail.emptyState.title')"
-                        :subline="$t('kommandhub-paystack-detail.emptyState.subline')"
+                        :headline="$t('kommandhub-paystack-detail.emptyState.title')"
+                        :description="$t('kommandhub-paystack-detail.emptyState.subline')"
                         icon="regular-credit-card"
+                        centered
                         class="kommandhub-paystack-detail-empty-state"
                 />
                 {% endblock %}
@@ -117,22 +118,21 @@
 
     {% block kommandhub_paystack_detail_captures_card %}
     <mt-card
-            v-if="order && paystackCaptures.length"
+            v-if="order && captures.length"
             position-identifier="kommandhub-paystack-detail-captures-card"
             class="kommandhub-paystack-detail-captures-card"
-            style="margin-top: 20px;"
     >
         <template #default>
             {% block kommandhub_paystack_detail_captures_grid %}
             {% block kommandhub_paystack_detail_captures_grid_title %}
-            <h3 style="margin-bottom: 10px;">
+            <h3 class="kommandhub-paystack-detail-captures-card__title">
                 {{ $t('kommandhub-paystack-detail.grid.captures') }}
             </h3>
             {% endblock %}
 
             {% block kommandhub_paystack_detail_captures_grid_table %}
             <sw-data-grid
-                    :data-source="paystackCaptures"
+                    :data-source="captures"
                     :columns="paystackCaptureColumns"
                     :show-selection="false"
                     :show-actions="true"
@@ -256,12 +256,13 @@
                 gap="16px"
         >
             {% block kommandhub_paystack_detail_refund_modal_amount_field %}
-            <sw-number-field
-                    v-model.number="refundAmount"
+            <mt-number-field
+                    v-model="refundAmount"
                     :label="$t('kommandhub-paystack-detail.refund.amountLabel')"
                     :placeholder="$t('kommandhub-paystack-detail.refund.amountPlaceholder')"
                     :help-text="$t('kommandhub-paystack-detail.refund.amountHelpText')"
                     number-type="float"
+                    :digits="refundAmountDigits"
                     :min="minRefundableAmount"
                     :max="Number(maxRefundableAmount)"
                     :step="0.50"
@@ -269,7 +270,7 @@
             {% endblock %}
 
             {% block kommandhub_paystack_detail_refund_modal_currency_field %}
-            <sw-text-field
+            <mt-text-field
                     v-model="refundCurrency"
                     :label="$t('kommandhub-paystack-detail.refund.currencyLabel')"
                     disabled
@@ -278,7 +279,7 @@
         </sw-container>
 
         {% block kommandhub_paystack_detail_refund_modal_customer_note_field %}
-        <sw-text-field
+        <mt-text-field
                 v-model="customerNote"
                 :label="$t('kommandhub-paystack-detail.refund.customerNoteLabel')"
                 :placeholder="$t('kommandhub-paystack-detail.refund.customerNotePlaceholder')"
@@ -286,7 +287,7 @@
         {% endblock %}
 
         {% block kommandhub_paystack_detail_refund_modal_merchant_note_field %}
-        <sw-text-field
+        <mt-text-field
                 v-model="merchantNote"
                 :label="$t('kommandhub-paystack-detail.refund.merchantNoteLabel')"
                 :placeholder="$t('kommandhub-paystack-detail.refund.merchantNotePlaceholder')"

@@ -21,7 +21,7 @@ Shopware.Module.register('kommandhub-paystack-detail', {
         if (currentRoute.name === 'sw.order.detail') {
             const paystackRoute = 'kommandhub.paystack.detail';
 
-            if (currentRoute.name === 'sw.order.detail' && !currentRoute.children.some(child => child.name === paystackRoute)) {
+            if (!currentRoute.children.some(child => child.name === paystackRoute)) {
                 currentRoute.children.push({
                     name: paystackRoute,
                     path: 'kommandhub/paystack',

@@ -3,11 +3,11 @@
   "entryPoints": {
     "kommandhub-paystack-s-w": {
       "css": [
-        "/bundles/kommandhubpaystacksw/administration/assets/kommandhub-paystack-s-w-BSuJyYEh.css"
+        "/bundles/kommandhubpaystacksw/administration/assets/kommandhub-paystack-s-w-Bqi7SZ4U.css"
       ],
       "dynamic": [],
       "js": [
-        "/bundles/kommandhubpaystacksw/administration/assets/kommandhub-paystack-s-w-CFO1289w.js"
+        "/bundles/kommandhubpaystacksw/administration/assets/kommandhub-paystack-s-w-DDJJpXqE.js"
       ],
       "legacy": false,
       "preload": []

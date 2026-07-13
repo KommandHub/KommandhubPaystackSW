@@ -34,8 +34,16 @@
         flex-direction: column;
         justify-content: center;
 
-        .sw-empty-state__icon {
+        .mt-empty-state__icon {
             color: #011b33;
         }
+    }
+}
+
+.kommandhub-paystack-detail-captures-card {
+    margin-top: 20px;
+
+    &__title {
+        margin-bottom: 10px;
     }
 }

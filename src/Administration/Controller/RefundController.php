@@ -11,6 +11,8 @@ use Kommandhub\PaystackSW\Client\PaystackClient;
 use Kommandhub\PaystackSW\Setting\Service\Config;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureStates;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
 use Shopware\Core\Framework\Routing\ApiRouteScope;
 use Shopware\Core\PlatformRequest;
 use Shopware\Core\Framework\Context;
@@ -49,7 +51,10 @@ class RefundController extends AbstractController
     #[Route(
         path: '/api/_action/paystack/refund',
         name: 'api.action.paystack.refund',
-        defaults: [PlatformRequest::ATTRIBUTE_LOGIN_REQUIRED => true],
+        defaults: [
+            PlatformRequest::ATTRIBUTE_LOGIN_REQUIRED => true,
+            '_acl' => ['order:update'],
+        ],
         methods: [Request::METHOD_POST]
     )]
     public function refund(Request $request, Context $context): JsonResponse
@@ -106,6 +111,16 @@ class RefundController extends AbstractController
                 ));
             }
 
+            $maxMinor = $this->maxRefundableMinorUnit($transaction, $currencyIso);
+
+            if ($minorAmount > $maxMinor) {
+                return $this->errorResponse(sprintf(
+                    'Refund amount exceeds the refundable balance of %s %s',
+                    PaystackCurrencyHelper::fromMinorUnit($maxMinor, $currencyIso),
+                    $currencyIso
+                ));
+            }
+
             $payload['amount'] = $minorAmount;
         }
 
@@ -124,6 +139,46 @@ class RefundController extends AbstractController
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage());
         }
+    }
+
+    /**
+     * Server-side over-refund guard: remaining refundable balance in minor units.
+     *
+     * Base is the sum of non-failed captures (or the transaction total when no
+     * captures exist yet), minus refunds already completed or in progress.
+     * Mirrors the admin refund-calculator so the client bound cannot be bypassed.
+     */
+    private function maxRefundableMinorUnit(OrderTransactionEntity $transaction, string $currencyIso): int
+    {
+        $toMinor = static fn (float $value): int => PaystackCurrencyHelper::toMinorUnit($value, $currencyIso);
+
+        $captures = $transaction->getCaptures();
+        $refunded = 0;
+        $capturesBase = 0;
+
+        if ($captures !== null) {
+            foreach ($captures as $capture) {
+                if ($capture->getStateMachineState()?->getTechnicalName() !== OrderTransactionCaptureStates::STATE_FAILED) {
+                    $capturesBase += $toMinor($capture->getAmount()->getTotalPrice());
+                }
+
+                foreach ($capture->getRefunds() ?? [] as $refund) {
+                    $state = $refund->getStateMachineState()?->getTechnicalName();
+
+                    if ($state === OrderTransactionCaptureRefundStates::STATE_COMPLETED
+                        || $state === OrderTransactionCaptureRefundStates::STATE_IN_PROGRESS
+                    ) {
+                        $refunded += $toMinor($refund->getAmount()->getTotalPrice());
+                    }
+                }
+            }
+        }
+
+        $base = ($captures !== null && $captures->count() > 0)
+            ? $capturesBase
+            : $toMinor($transaction->getAmount()->getTotalPrice());
+
+        return max(0, $base - $refunded);
     }
 
     private function isRefundableTransaction(OrderTransactionEntity $transaction): bool
