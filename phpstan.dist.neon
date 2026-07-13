@@ -2,9 +2,10 @@ parameters:
     paths:
         - 'src/'
 
-    scanDirectories:
-        - ../../../vendor/shopware/storefront
-
+    # shopware/storefront is a declared dependency (see composer.json); PHPStan
+    # resolves Shopware\Storefront\* through the Composer autoloader. Do NOT add
+    # a scanDirectories path into the host's vendor/ — it breaks in CI and in
+    # shopware-cli, where the extension is analysed in an isolated directory.
     # Set the level to 9 (the highest level)
     level: 9
 
