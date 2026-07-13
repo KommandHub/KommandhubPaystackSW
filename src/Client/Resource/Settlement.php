@@ -7,7 +7,7 @@ namespace Kommandhub\PaystackSW\Client\Resource;
 use Kommandhub\PaystackSW\Exception\PaystackException;
 
 /**
- * Class Settlement
+ * Class Settlement.
  */
 class Settlement extends ApiResource
 {

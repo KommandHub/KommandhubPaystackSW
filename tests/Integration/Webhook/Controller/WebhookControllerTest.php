@@ -90,7 +90,7 @@ class WebhookControllerTest extends TestCase
 
         $response = $this->controller->execute($request, $context);
 
-        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertEquals(Response::HTTP_NO_CONTENT, $response->getStatusCode());
     }
 
     public function testWebhookRequestWithInvalidSignature(): void

@@ -6,7 +6,6 @@ namespace Kommandhub\PaystackSW\Checkout\Payment\Service;
 
 use Kommandhub\PaystackSW\Checkout\Payment\Enum\PaystackTransactionStatus;
 use Kommandhub\PaystackSW\Exception\PaymentException;
-use Kommandhub\PaystackSW\Checkout\Payment\Service\TransactionService;
 use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Kommandhub\PaystackSW\Logging\ConfigurableLogger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;

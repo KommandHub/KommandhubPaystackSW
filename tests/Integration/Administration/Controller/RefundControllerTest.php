@@ -22,6 +22,11 @@ use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\System\Currency\CurrencyEntity;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineState\StateMachineStateEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundCollection;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureStates;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -289,6 +294,81 @@ class RefundControllerTest extends TestCase
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         $responseData = json_decode($response->getContent(), true);
         $this->assertEquals('Refund amount exceeds the refundable balance of 100 NGN', $responseData['error']);
+    }
+
+    public function testRefundFailsWithNegativeAmount(): void
+    {
+        $payload = [
+            'transaction' => 'T12345',
+            'amount' => -10,
+        ];
+
+        $request = new Request([], $payload);
+        $request->setMethod('POST');
+        $context = Context::createDefaultContext();
+
+        $this->orderTransactionService->method('findOneByPaystackReference')
+            ->willReturn($this->createRefundableTransaction());
+
+        $response = $this->controller->refund($request, $context);
+
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $responseData = json_decode($response->getContent(), true);
+        $this->assertEquals('Refund amount must be a positive number', $responseData['error']);
+    }
+
+    public function testMaxRefundableMinorUnitWithCapturesAndRefunds(): void
+    {
+        $transaction = $this->createRefundableTransaction();
+
+        $capture1 = new OrderTransactionCaptureEntity();
+        $capture1->setId('c1');
+        $price1 = $this->createMock(CalculatedPrice::class);
+        $price1->method('getTotalPrice')->willReturn(60.0);
+        $capture1->setAmount($price1);
+        $state1 = new StateMachineStateEntity();
+        $state1->setTechnicalName(OrderTransactionCaptureStates::STATE_COMPLETED);
+        $capture1->setStateMachineState($state1);
+
+        $refund1 = new OrderTransactionCaptureRefundEntity();
+        $refund1->setId('r1');
+        $rprice1 = $this->createMock(CalculatedPrice::class);
+        $rprice1->method('getTotalPrice')->willReturn(20.0);
+        $refund1->setAmount($rprice1);
+        $rstate1 = new StateMachineStateEntity();
+        $rstate1->setTechnicalName(OrderTransactionCaptureRefundStates::STATE_COMPLETED);
+        $refund1->setStateMachineState($rstate1);
+
+        $capture1->setRefunds(new OrderTransactionCaptureRefundCollection([$refund1]));
+
+        $capture2 = new OrderTransactionCaptureEntity();
+        $capture2->setId('c2');
+        $price2 = $this->createMock(CalculatedPrice::class);
+        $price2->method('getTotalPrice')->willReturn(40.0);
+        $capture2->setAmount($price2);
+        $state2 = new StateMachineStateEntity();
+        $state2->setTechnicalName(OrderTransactionCaptureStates::STATE_FAILED);
+        $capture2->setStateMachineState($state2);
+
+        $transaction->setCaptures(new OrderTransactionCaptureCollection([$capture1, $capture2]));
+
+        $payload = [
+            'transaction' => 'T12345',
+            'amount' => 50, // 5000 minor units
+        ];
+        $request = new Request([], $payload);
+        $request->setMethod('POST');
+        $context = Context::createDefaultContext();
+
+        $this->orderTransactionService->method('findOneByPaystackReference')
+            ->willReturn($transaction);
+
+        // Base is 6000 (capture1) - 2000 (refund1) = 4000. 5000 > 4000
+        $response = $this->controller->refund($request, $context);
+
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $responseData = json_decode($response->getContent(), true);
+        $this->assertEquals('Refund amount exceeds the refundable balance of 40 NGN', $responseData['error']);
     }
 
     private function createRefundableTransaction(): OrderTransactionEntity

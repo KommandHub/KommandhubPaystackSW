@@ -373,6 +373,61 @@ class TransactionVerificationProcessorTest extends TestCase
         $this->processor->verify($reference, $transaction, $this->context);
     }
 
+    public function testVerifyThrowsOnMissingOrderCurrencyInCurrencyAssertion(): void
+    {
+        $reference = 'test-reference';
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction->method('getId')->willReturn('test-id');
+
+        $order = $this->createMock(OrderEntity::class);
+        // Currency is missing
+        $order->method('getCurrency')->willReturn(null);
+        $transaction->method('getOrder')->willReturn($order);
+
+        $verificationData = [
+            'status' => true,
+            'data' => [
+                'amount' => 2000,
+                'currency' => 'NGN',
+            ],
+        ];
+
+        $this->transactionService->method('verify')->willReturn($verificationData);
+
+        // This will actually fail at line 119 in assertTransactionAmount first
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Missing order currency information.');
+
+        try {
+            $this->processor->verify($reference, $transaction, $this->context);
+        } catch (ShopwarePaymentException $e) {
+            $this->assertStringContainsString('Missing order currency information.', $e->getMessage());
+            throw $e;
+        }
+    }
+
+    public function testAssertTransactionCurrencyThrowsOnMissingOrder(): void
+    {
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction->method('getId')->willReturn('test-id');
+        $transaction->method('getOrder')->willReturn(null);
+
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Missing order currency information.');
+
+        $method = new \ReflectionMethod(TransactionVerificationProcessor::class, 'assertTransactionCurrency');
+        $method->invoke($this->processor, ['currency' => 'NGN'], $transaction);
+    }
+
+    public function testFail(): void
+    {
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Test error');
+
+        $method = new \ReflectionMethod(TransactionVerificationProcessor::class, 'fail');
+        $method->invoke($this->processor, 'tid', 'Test error');
+    }
+
     public function testVerifyThrowsOnMissingStatus(): void
     {
         $reference = 'test-reference';

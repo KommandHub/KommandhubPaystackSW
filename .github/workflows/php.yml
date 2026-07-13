@@ -22,7 +22,7 @@ jobs:
         with:
           php-version: '8.2'
           extensions: mbstring, xml, ctype, iconv, intl, gd, zip
-          coverage: none
+          coverage: pcov
 
       - name: Validate composer.json
         run: composer validate
@@ -48,6 +48,12 @@ jobs:
       - name: Run PHP CS Fixer
         run: ./vendor/bin/php-cs-fixer fix --dry-run --diff
 
-      # ✅ Unit tests ONLY (no Shopware kernel!)
-      - name: Run PHPUnit
-        run: ./vendor/bin/phpunit tests/Unit --testdox --no-coverage
+      # ✅ Unit tests with coverage (no Shopware kernel!)
+      # Integration tests need a booted Shopware kernel + database; run them
+      # locally with `make test` or in a full Shopware CI, not here.
+      - name: Run PHPUnit (unit)
+        run: ./vendor/bin/phpunit tests/Unit --testdox --coverage-clover build/logs/clover.xml
+
+      # ✅ Enforce a minimum line-coverage threshold
+      - name: Check coverage threshold
+        run: ./vendor/bin/coverage-check build/logs/clover.xml 100

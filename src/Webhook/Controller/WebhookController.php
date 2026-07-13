@@ -39,27 +39,27 @@ class WebhookController extends AbstractController
         try {
             $this->webhookProcessor->process($request, $context);
 
-            return new Response('', Response::HTTP_OK);
+            return new Response(null, Response::HTTP_NO_CONTENT);
         } catch (AccessDeniedHttpException $exception) {
             $this->logger->warning('[Paystack] Webhook signature validation failed.', [
                 'message' => $exception->getMessage(),
                 'ip' => $request->getClientIp(),
             ]);
 
-            return new Response('', Response::HTTP_FORBIDDEN);
+            return new Response('Access Denied', Response::HTTP_FORBIDDEN);
         } catch (BadRequestHttpException $exception) {
             $this->logger->warning('[Paystack] Invalid webhook payload received.', [
                 'message' => $exception->getMessage(),
                 'ip' => $request->getClientIp(),
             ]);
 
-            return new Response('', Response::HTTP_BAD_REQUEST);
+            return new Response('Bad Request', Response::HTTP_BAD_REQUEST);
         } catch (\Throwable $exception) {
             $this->logger->error('[Paystack] Webhook processing failed.', [
                 'exception' => $exception,
             ]);
 
-            return new Response('', Response::HTTP_INTERNAL_SERVER_ERROR);
+            return new Response('Internal Server Error', Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

@@ -126,10 +126,10 @@ class BankVerificationController extends StorefrontController
         $violations = $this->validator->getViolations($data->all(), $validation);
 
         if ($violations->count() > 0) {
-            $this->addFlash(self::DANGER, 'Please correct the following errors:');
+            $this->addFlash(StorefrontController::DANGER, 'Please correct the following errors:');
 
             foreach ($violations as $violation) {
-                $this->addFlash(self::DANGER, $violation->getMessage());
+                $this->addFlash(StorefrontController::DANGER, $violation->getMessage());
             }
 
             return $this->redirectToRoute('frontend.account.profile.page');
@@ -148,7 +148,7 @@ class BankVerificationController extends StorefrontController
             ],
         ], $context->getContext());
 
-        $this->addFlash(self::SUCCESS, 'Bank details saved successfully.');
+        $this->addFlash(StorefrontController::SUCCESS, 'Bank details saved successfully.');
 
         return $this->redirectToRoute('frontend.account.profile.page');
     }

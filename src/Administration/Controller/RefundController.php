@@ -101,7 +101,7 @@ class RefundController extends AbstractController
             $minorAmount = PaystackCurrencyHelper::toMinorUnit((float)$amount, $currencyIso);
 
             $minAmountLimit = $this->config->get('minimumRefundAmount', PaystackConstants::MINIMUM_REFUND_AMOUNT, $salesChannelId);
-            $minAmountLimit = (int) $minAmountLimit;
+            $minAmountLimit = (int)$minAmountLimit;
 
             if ($minorAmount < $minAmountLimit) {
                 return $this->errorResponse(sprintf(

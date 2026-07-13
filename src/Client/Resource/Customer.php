@@ -7,7 +7,7 @@ namespace Kommandhub\PaystackSW\Client\Resource;
 use Kommandhub\PaystackSW\Exception\PaystackException;
 
 /**
- * Class Customer
+ * Class Customer.
  */
 class Customer extends ApiResource
 {

@@ -8,7 +8,7 @@ use Kommandhub\PaystackSW\Client\Http\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Class ApiResource
+ * Class ApiResource.
  */
 abstract class ApiResource
 {

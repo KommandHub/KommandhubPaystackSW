@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Checkout\Payment\Service;
 
 use DateTimeImmutable;
-use Kommandhub\PaystackSW\Checkout\Payment\Service\OrderTransactionService;
 use Kommandhub\PaystackSW\Util\PaystackConstants;
 use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Shopware\Core\Framework\Context;

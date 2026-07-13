@@ -2,6 +2,9 @@ parameters:
     paths:
         - 'src/'
 
+    scanDirectories:
+        - ../../../vendor/shopware/storefront
+
     # Set the level to 9 (the highest level)
     level: 9
 

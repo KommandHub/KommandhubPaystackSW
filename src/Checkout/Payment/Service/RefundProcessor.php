@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Checkout\Payment\Service;
 
 use Doctrine\DBAL\Connection;
-use Kommandhub\PaystackSW\Checkout\Payment\Service\OrderTransactionService;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;

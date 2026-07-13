@@ -1,7 +1,6 @@
 import template from './sw-order-detail.html.twig';
 import { PAYSTACK_HANDLER_IDENTIFIER, isAbortError } from '../../../../util/paystack';
 
-const { Criteria } = Shopware.Data;
 
 Shopware.Component.override('sw-order-detail', {
     template,

@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace Kommandhub\PaystackSW\Client\Resource;
 
 use Kommandhub\PaystackSW\Exception\PaystackException;
-use Kommandhub\PaystackSW\Client\Resource\ApiResource;
 
 /**
- * Class Refund
+ * Class Refund.
  */
 class Refund extends ApiResource
 {

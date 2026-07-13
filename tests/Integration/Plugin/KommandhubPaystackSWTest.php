@@ -64,6 +64,32 @@ class KommandhubPaystackSWTest extends TestCase
         self::assertFalse($this->customFieldSetExists());
     }
 
+    public function testExecuteComposerCommands(): void
+    {
+        self::assertTrue($this->plugin->executeComposerCommands());
+    }
+
+    public function testUpdate(): void
+    {
+        $this->plugin->update($this->createUpdateContext());
+
+        $paymentMethod = $this->getPaymentMethod();
+        self::assertInstanceOf(PaymentMethodEntity::class, $paymentMethod);
+        self::assertTrue($this->customFieldSetExists());
+    }
+
+    private function createUpdateContext(): \Shopware\Core\Framework\Plugin\Context\UpdateContext
+    {
+        return new \Shopware\Core\Framework\Plugin\Context\UpdateContext(
+            $this->plugin,
+            Context::createDefaultContext(),
+            '6.7.0.0',
+            '1.0.0',
+            $this->createMock(MigrationCollection::class),
+            '1.0.1'
+        );
+    }
+
     private function getPaymentMethod(): ?PaymentMethodEntity
     {
         $criteria = (new Criteria())->addFilter(new EqualsFilter('technicalName', 'kommandhub_paystack_payment'));

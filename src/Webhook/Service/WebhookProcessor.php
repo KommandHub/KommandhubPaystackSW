@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Webhook\Service;
 
-use Kommandhub\PaystackSW\Webhook\Service\WebhookEventFactory;
-use Kommandhub\PaystackSW\Webhook\Service\WebhookSignatureValidator;
 use Kommandhub\PaystackSW\Logging\ConfigurableLogger;
 use Shopware\Core\Framework\Context;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;

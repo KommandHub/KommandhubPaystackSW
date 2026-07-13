@@ -1,5 +1,4 @@
 const { PluginBaseClass } = window;
-import HttpClient from 'src/service/http-client.service';
 
 /**
  * Paystack Bank Verification Plugin
@@ -36,8 +35,6 @@ export default class PaystackBankVerificationPlugin extends PluginBaseClass {
     static BVN_LENGTH = 11;
 
     init() {
-        this._client = new HttpClient();
-
         this._bankSelect = this.el.querySelector(this.options.bankSelectSelector);
         this._accountNumberInput = this.el.querySelector(this.options.accountNumberSelector);
         this._bvnInput = this.el.querySelector(this.options.bvnSelector);
@@ -84,17 +81,20 @@ export default class PaystackBankVerificationPlugin extends PluginBaseClass {
             return;
         }
 
-        this._client.get(this.options.banksUrl, (response) => {
-            try {
-                const result = JSON.parse(response);
-
+        fetch(this.options.banksUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+            .then((response) => response.json())
+            .then((result) => {
                 if (result.status && Array.isArray(result.data)) {
                     this._populateBankSelect(result.data);
                 }
-            } catch (error) {
-                console.error('Failed to parse banks response.', error);
-            }
-        });
+            })
+            .catch((error) => {
+                console.error('Failed to load banks.', error);
+            });
     }
 
     /**
@@ -193,11 +193,16 @@ export default class PaystackBankVerificationPlugin extends PluginBaseClass {
         formData.append('account_number', accountNumber);
         formData.append('bank_code', bankCode);
 
-        this._client.post(this.options.verifyUrl, formData, (response) => {
-            this._setLoading(false, this._accountNumberInput);
-
-            try {
-                const result = JSON.parse(response);
+        fetch(this.options.verifyUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+            .then((response) => response.json())
+            .then((result) => {
+                this._setLoading(false, this._accountNumberInput);
 
                 if (result.status && result.data) {
                     this._accountNameInput.value = result.data.account_name;
@@ -214,16 +219,17 @@ export default class PaystackBankVerificationPlugin extends PluginBaseClass {
                         result.message || 'Account verification failed'
                     );
                 }
-            } catch (error) {
-                console.error('Failed to parse verification response.', error);
+            })
+            .catch((error) => {
+                this._setLoading(false, this._accountNumberInput);
+                console.error('Failed to verify account.', error);
 
                 this._markValidationState(
                     this._accountNumberInput,
                     false,
                     'Verification service unavailable'
                 );
-            }
-        });
+            });
     }
 
 
