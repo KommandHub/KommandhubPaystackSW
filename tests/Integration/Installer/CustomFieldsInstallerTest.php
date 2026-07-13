@@ -6,6 +6,7 @@ namespace Kommandhub\PaystackSW\Tests\Integration\Installer;
 
 use Kommandhub\PaystackSW\Installer\CustomFieldsInstaller;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Customer\CustomerDefinition;
 use Shopware\Core\Framework\Context;
@@ -15,6 +16,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Test\TestCaseBase\IntegrationTestBehaviour;
 
 #[CoversClass(CustomFieldsInstaller::class)]
+#[Group('kernel')]
 class CustomFieldsInstallerTest extends TestCase
 {
     use IntegrationTestBehaviour;

@@ -9,6 +9,7 @@ use Kommandhub\PaystackSW\Installer\PaymentMethodInstaller;
 use Kommandhub\PaystackSW\Checkout\Payment\Handler\PaystackPaymentHandler;
 use Kommandhub\PaystackSW\KommandhubPaystackSW;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
@@ -26,6 +27,7 @@ use Shopware\Core\Framework\Test\TestCaseBase\IntegrationTestBehaviour;
 #[UsesClass(CustomFieldsInstaller::class)]
 #[UsesClass(PaymentMethodInstaller::class)]
 #[UsesClass(PaystackPaymentHandler::class)]
+#[Group('kernel')]
 class KommandhubPaystackSWTest extends TestCase
 {
     use IntegrationTestBehaviour;

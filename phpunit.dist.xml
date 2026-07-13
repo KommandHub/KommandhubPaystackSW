@@ -44,6 +44,12 @@
             <directory>src/Entity</directory>
             <directory>tests</directory>
             <directory>vendor</directory>
+            <!-- Plugin bootstrap: lifecycle glue (DI container access, install/
+                 update/activate hooks) that can only be exercised with a booted
+                 Shopware kernel. Covered by the @group kernel integration tests
+                 in the full suite; excluded here so the no-kernel CI coverage
+                 gate reflects code it can actually run. -->
+            <file>src/KommandhubPaystackSW.php</file>
         </exclude>
     </source>
 

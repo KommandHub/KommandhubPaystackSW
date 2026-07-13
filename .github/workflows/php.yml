@@ -48,12 +48,13 @@ jobs:
       - name: Run PHP CS Fixer
         run: ./vendor/bin/php-cs-fixer fix --dry-run --diff
 
-      # ✅ Unit tests with coverage (no Shopware kernel!)
-      # Integration tests need a booted Shopware kernel + database; run them
-      # locally with `make test` or in a full Shopware CI, not here.
-      - name: Run PHPUnit (unit)
-        run: ./vendor/bin/phpunit tests/Unit --testdox --coverage-clover build/logs/clover.xml
+      # ✅ Unit + mockable integration tests with coverage (no Shopware kernel!)
+      # Tests tagged @group kernel need a booted Shopware kernel + database and
+      # are excluded here; run the full suite locally with `make test`.
+      - name: Run PHPUnit
+        run: ./vendor/bin/phpunit --exclude-group kernel --testdox --coverage-clover build/logs/clover.xml
 
-      # ✅ Enforce a minimum line-coverage threshold
+      # ✅ Enforce the line-coverage threshold (the plugin bootstrap class,
+      # which is only reachable with a kernel, is excluded in phpunit.dist.xml)
       - name: Check coverage threshold
         run: ./vendor/bin/coverage-check build/logs/clover.xml 100
