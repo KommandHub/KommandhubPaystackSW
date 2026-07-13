@@ -7,21 +7,36 @@
     "keywords": [
         "shopware",
         "shopware6",
-        "plugin",
-        "payment",
+        "shopware-plugin",
+        "shopware-payment",
         "paystack",
-        "gateway",
-        "e-commerce",
+        "payment",
+        "payment-gateway",
+        "checkout",
+        "refund",
+        "webhook",
+        "mobile-money",
+        "ussd",
+        "bank-transfer",
         "africa",
-        "kommandhub"
+        "nigeria",
+        "ecommerce"
     ],
+    "homepage": "https://github.com/KommandHub/KommandhubPaystackSW",
     "authors": [
         {
             "name": "Kommandhub Limited",
-            "email": "admin@kommandhub.com",
+            "email": "info@kommandhub.com",
+            "homepage": "https://kommandhub.com",
             "role": "Developer"
         }
     ],
+    "support": {
+        "email": "info@kommandhub.com",
+        "issues": "https://github.com/KommandHub/KommandhubPaystackSW/issues",
+        "source": "https://github.com/KommandHub/KommandhubPaystackSW",
+        "docs": "https://github.com/KommandHub/KommandhubPaystackSW/blob/main/README.md"
+    },
     "require": {
         "shopware/core": "~6.6.0 || ~6.7.0",
         "shopware/storefront": "~6.6.0 || ~6.7.0"
