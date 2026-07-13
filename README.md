@@ -32,7 +32,7 @@ This document is the technical reference for developers **contributing to** the 
 - [Build & Asset Compilation](#build--asset-compilation)
 - [Testing](#testing)
 - [Code Quality](#code-quality)
-- [Database Migrations](#database-migrations)
+- [Data Handling](#data-handling)
 - [Logging & Debugging](#logging--debugging)
 - [Security Considerations](#security-considerations)
 - [Performance Considerations](#performance-considerations)
@@ -187,7 +187,6 @@ KommandhubPaystackSW/
 │   ├── Exception/                        # Domain exceptions
 │   ├── Util/                             # PaystackConstants, PaystackCurrencyHelper
 │   ├── Installer/                        # Payment method + custom fields installers
-│   ├── Migration/                        # African currencies & languages
 │   └── Resources/
 │       ├── config/                       # services.yml, routes.yml, config.xml
 │       ├── snippet/                      # Storefront snippets
@@ -400,14 +399,14 @@ CI enforces PHP lint, PHPStan, code style, unit tests, and a minimum line-covera
 
 ---
 
-## Database Migrations
+## Data Handling
 
-Migrations live in `src/Migration/` and are discovered automatically by Shopware:
+The plugin ships **no schema migrations** — it does not alter the database schema. All setup is performed through Shopware's plugin lifecycle by dedicated installers:
 
-- `Migration1780388405AddAfricanCurrencies` — adds African currencies.
-- `Migration1780389223AddAfricanLanguages` — adds African languages.
+- **Payment method**: created and kept in sync by `Installer\PaymentMethodInstaller`.
+- **Custom fields** (Paystack reference, amount, currency, fee, etc.): created by `Installer\CustomFieldsInstaller` during install/update.
 
-Custom fields (Paystack reference, amount, currency, fee, etc.) are created by `Installer\CustomFieldsInstaller` during install/update, not by migrations. The payment method itself is created and kept in sync by `Installer\PaymentMethodInstaller`.
+These run on `install()`/`update()` and are reverted appropriately on uninstall (custom fields are removed only when the user does not keep plugin data).
 
 > The plugin's `update()` lifecycle hook re-runs the installers, which migrates the stored payment-method `handlerIdentifier` if the handler class moves between versions. Without this, a plugin **update** (as opposed to a fresh install) would leave a dangling handler identifier and break checkout.
 
