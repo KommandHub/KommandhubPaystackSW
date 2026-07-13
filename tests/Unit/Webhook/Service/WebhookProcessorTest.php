@@ -98,4 +98,72 @@ class WebhookProcessorTest extends TestCase
 
         $this->processor->process($request, $context);
     }
+
+    public function testProcessWithEmptyPayload(): void
+    {
+        $request = new Request([], [], [], [], [], [], '');
+        $context = Context::createDefaultContext();
+
+        $this->expectException(BadRequestHttpException::class);
+        $this->expectExceptionMessage('Invalid webhook payload.');
+
+        $this->processor->process($request, $context);
+    }
+
+    public function testProcessWithMissingEventData(): void
+    {
+        $request = new Request([], [], [], [], [], [], json_encode([
+            'event' => 'charge.success',
+            // 'data' missing
+        ]));
+        $context = Context::createDefaultContext();
+
+        $this->expectException(BadRequestHttpException::class);
+        $this->expectExceptionMessage('Invalid webhook payload.');
+
+        $this->processor->process($request, $context);
+    }
+
+    public function testProcessWithNonArrayPayload(): void
+    {
+        $request = new Request([], [], [], [], [], [], json_encode('string-payload'));
+        $context = Context::createDefaultContext();
+
+        $this->expectException(BadRequestHttpException::class);
+        $this->expectExceptionMessage('Invalid webhook payload.');
+
+        $this->processor->process($request, $context);
+    }
+
+    public function testProcessWithInvalidEventName(): void
+    {
+        $request = new Request([], [], [], [], [], [], json_encode([
+            'event' => [], // Should be string
+            'data' => [],
+        ]));
+        $context = Context::createDefaultContext();
+
+        $this->eventFactory->expects($this->once())
+            ->method('create')
+            ->with('', [], $context)
+            ->willReturn(null);
+
+        $this->processor->process($request, $context);
+    }
+
+    public function testProcessWithInvalidData(): void
+    {
+        $request = new Request([], [], [], [], [], [], json_encode([
+            'event' => 'charge.success',
+            'data' => 'not-an-array', // Should be array
+        ]));
+        $context = Context::createDefaultContext();
+
+        $this->eventFactory->expects($this->once())
+            ->method('create')
+            ->with('charge.success', [], $context)
+            ->willReturn(null);
+
+        $this->processor->process($request, $context);
+    }
 }

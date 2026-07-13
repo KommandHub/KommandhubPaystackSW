@@ -419,6 +419,101 @@ class TransactionVerificationProcessorTest extends TestCase
         $method->invoke($this->processor, ['currency' => 'NGN'], $transaction);
     }
 
+    public function testVerifyHandlesReversedStatus(): void
+    {
+        $reference = 'test-reference';
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction->method('getId')->willReturn('test-id');
+
+        $order = $this->createMock(OrderEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $order->method('getCurrency')->willReturn($currency);
+        $transaction->method('getOrder')->willReturn($order);
+
+        $calculatedPrice = $this->createMock(CalculatedPrice::class);
+        $calculatedPrice->method('getTotalPrice')->willReturn(20.00);
+        $transaction->method('getAmount')->willReturn($calculatedPrice);
+
+        $verificationData = [
+            'status' => true,
+            'data' => [
+                'status' => 'reversed',
+                'amount' => 2000,
+                'currency' => 'NGN',
+            ],
+        ];
+
+        $this->transactionService->method('verify')->willReturn($verificationData);
+
+        $this->expectException(ShopwarePaymentException::class);
+        $this->expectExceptionMessage('Payment failed with status: reversed');
+
+        $this->processor->verify($reference, $transaction, $this->context);
+    }
+
+    public function testVerifyHandlesQueuedStatus(): void
+    {
+        $reference = 'test-reference';
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction->method('getId')->willReturn('test-id');
+
+        $order = $this->createMock(OrderEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $order->method('getCurrency')->willReturn($currency);
+        $transaction->method('getOrder')->willReturn($order);
+
+        $calculatedPrice = $this->createMock(CalculatedPrice::class);
+        $calculatedPrice->method('getTotalPrice')->willReturn(20.00);
+        $transaction->method('getAmount')->willReturn($calculatedPrice);
+
+        $verificationData = [
+            'status' => true,
+            'data' => [
+                'status' => 'queued',
+                'amount' => 2000,
+                'currency' => 'NGN',
+            ],
+        ];
+
+        $this->transactionService->method('verify')->willReturn($verificationData);
+        $this->logger->expects($this->once())->method('info');
+
+        $this->assertSame($verificationData, $this->processor->verify($reference, $transaction, $this->context));
+    }
+
+    public function testVerifyHandlesOngoingStatus(): void
+    {
+        $reference = 'test-reference';
+        $transaction = $this->createMock(OrderTransactionEntity::class);
+        $transaction->method('getId')->willReturn('test-id');
+
+        $order = $this->createMock(OrderEntity::class);
+        $currency = $this->createMock(CurrencyEntity::class);
+        $currency->method('getIsoCode')->willReturn('NGN');
+        $order->method('getCurrency')->willReturn($currency);
+        $transaction->method('getOrder')->willReturn($order);
+
+        $calculatedPrice = $this->createMock(CalculatedPrice::class);
+        $calculatedPrice->method('getTotalPrice')->willReturn(20.00);
+        $transaction->method('getAmount')->willReturn($calculatedPrice);
+
+        $verificationData = [
+            'status' => true,
+            'data' => [
+                'status' => 'ongoing',
+                'amount' => 2000,
+                'currency' => 'NGN',
+            ],
+        ];
+
+        $this->transactionService->method('verify')->willReturn($verificationData);
+        $this->logger->expects($this->once())->method('info');
+
+        $this->assertSame($verificationData, $this->processor->verify($reference, $transaction, $this->context));
+    }
+
     public function testFail(): void
     {
         $this->expectException(ShopwarePaymentException::class);

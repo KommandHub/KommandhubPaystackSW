@@ -94,4 +94,26 @@ class ConfigurableLoggerTest extends TestCase
 
         $this->configurableLogger->log($level, 'test message');
     }
+
+    public function testLogWithUnsupportedLevelType(): void
+    {
+        $this->config->method('getBool')->with('enableDebugging')->willReturn(false);
+
+        // 'unknown' is not in ALWAYS_LOGGED, so it should be skipped when debugging is disabled
+        $this->innerLogger->expects($this->never())->method('log');
+
+        $this->configurableLogger->log([], 'test message');
+    }
+
+    public function testAlwaysLoggedLevelsAreLoggedEvenIfLevelNotSelected(): void
+    {
+        $this->config->method('getBool')->with('enableDebugging')->willReturn(true);
+        $this->config->method('getArray')->with('logLevels')->willReturn(['info']);
+
+        $this->innerLogger->expects($this->once())
+            ->method('log')
+            ->with('error', 'error message', []);
+
+        $this->configurableLogger->error('error message');
+    }
 }
