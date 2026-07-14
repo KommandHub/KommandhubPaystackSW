@@ -57,7 +57,9 @@ The plugin adds Paystack as a native Shopware 6 payment method. It handles the f
 3. **Reconcile** payments asynchronously via signed webhooks (for cases where the customer never returns from the redirect).
 4. **Refund** orders (full or partial) from the Administration, guarded by a dedicated permission and a server-side over-refund check.
 
-It also provides customer bank-account verification (via Paystack's account-resolution endpoint) and first-class support for African currencies and languages, including zero- and three-decimal currencies.
+It also provides customer bank-account verification (via Paystack's account-resolution endpoint) and correct money handling for the currencies Paystack supports, including zero-decimal (e.g. XOF, RWF) and three-decimal (e.g. KWD) currencies.
+
+> The plugin does **not** create currencies or languages in your shop. Amounts are converted correctly for whichever currency an order uses; adding a currency (e.g. XOF) or a language to Shopware remains a normal shop configuration step.
 
 ---
 
@@ -69,7 +71,8 @@ It also provides customer bank-account verification (via Paystack's account-reso
 - Full and partial refunds from the order detail page, with a **server-side over-refund cap**.
 - A dedicated **`paystack.refund`** admin permission, assignable to roles (depends on the order editor permission).
 - Customer bank-account verification in the account area.
-- African currency and language support, including 0-decimal (e.g. XOF, RWF) and 3-decimal (e.g. KWD) currencies.
+- Correct amount handling for every currency Paystack supports, including 0-decimal (e.g. XOF, RWF) and 3-decimal (e.g. KWD) currencies — amounts always cross the Paystack boundary in the right minor unit.
+- Plugin interface translated into English, German and French (administration + storefront).
 - Optional Paystack split payments (subaccount / charges bearer).
 - Configurable, level-filtered logging with a sandbox/live mode toggle.
 

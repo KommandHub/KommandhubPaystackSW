@@ -8,6 +8,7 @@ Erstveröffentlichung.
 - Eigene Berechtigung „Paystack-Rückerstattung", die Rollen zugewiesen werden kann (abhängig von der Bestell-Editor-Berechtigung).
 - Webhook-Verarbeitung für `charge.success`, `refund.pending` und `refund.processed` mit Signaturprüfung.
 - Bankkontoprüfung im Kundenkonto (Kontoauflösung über Paystack).
-- Unterstützung afrikanischer Währungen und Sprachen, einschließlich Währungen mit null und drei Dezimalstellen.
+- Korrekte Betragsverarbeitung für alle von Paystack unterstützten Währungen, einschließlich Währungen mit null und drei Dezimalstellen (z. B. XOF, RWF, KWD). Das Plugin legt keine Währungen oder Sprachen im Shop an.
+- Plugin-Oberfläche auf Englisch, Deutsch und Französisch verfügbar.
 - Konfigurierbares Logging, Sandbox-/Live-Modus und ein Mindestrückerstattungsbetrag.
 - Unterstützt Shopware 6.6 und 6.7.
