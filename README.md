@@ -383,8 +383,8 @@ make test-coverage                     # text coverage report
 ```
 
 - **Unit tests** (`tests/Unit/`) use plain `PHPUnit\Framework\TestCase` with mocks and require no Shopware kernel. These run in CI.
-- **Integration tests** (`tests/Integration/`) exercise controllers and the plugin lifecycle; a couple need a booted Shopware kernel and database, so they run locally via `make test` (inside the container) rather than in the lightweight CI job.
-- **End-to-end**: browser-level QA of the Administration refund flow is done manually against a running shop; there is no automated E2E suite yet.
+- **Integration tests** (`tests/Integration/`) exercise controllers and the plugin lifecycle. Those tagged `#[Group('kernel')]` need a booted Shopware kernel and database, so they run locally via `make test` rather than in the lightweight CI job.
+- **End-to-end**: there is no automated E2E suite yet. The payment, refund and webhook flows are validated manually against a running shop with a Paystack **test** key. Automating this is on the [roadmap](#roadmap).
 
 Pure business logic in the admin (`Resources/app/administration/src/service/refund-calculator.js`) has a companion Jest-style spec (`refund-calculator.spec.js`) for a full Shopware admin test runner.
 
@@ -398,7 +398,7 @@ Pure business logic in the admin (`Resources/app/administration/src/service/refu
 | PHP-CS-Fixer | `make cs` / `make cs-fix` | `.php-cs-fixer.dist.php` |
 | PHPUnit | `make test` | `phpunit.dist.xml` |
 
-CI enforces PHP lint, PHPStan, code style, unit tests, and a minimum line-coverage threshold (85%).
+CI enforces PHP lint, PHPStan, code style, unit + mockable integration tests, and a 100% line-coverage threshold. Kernel-dependent tests are excluded from CI.
 
 ---
 
@@ -549,7 +549,11 @@ Please also read [`CLAUDE.md`](CLAUDE.md) for the module boundaries and project-
 - Complete the migration of Administration components to the Meteor Component Library (`sw-*` → `mt-*`), including data grids and modals.
 - Make the storefront bank-verification feature optional for headless setups (decouple from `StorefrontController`).
 - Trim unused Paystack API resource classes to the endpoints the plugin actually uses.
-- Add automated end-to-end coverage for the refund flow.
+- Add automated end-to-end coverage. Planned in layers, cheapest first:
+  1. **Paystack sandbox contract tests** — call the real API with an `sk_test_` key to prove the client matches Paystack's contract and that amounts survive the round trip in minor units.
+  2. **Webhook endpoint tests** — POST signed/unsigned payloads over HTTP (Paystack signs with HMAC-SHA512 of the raw body using the secret key, in `x-paystack-signature`).
+  3. **Browser tests** — storefront checkout through Paystack's hosted page and the Administration refund flow.
+  Notes for whoever picks this up: gate the suite behind an env var so it skips by default, refuse to run against a live key, exclude it from CI, and remember that real webhook delivery needs a public tunnel **and** the tunnel hostname registered as a Shopware sales-channel domain (otherwise Shopware answers `400` before the controller runs).
 
 ---
 
