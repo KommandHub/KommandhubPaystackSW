@@ -6,6 +6,7 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Webhook\Service;
 
 use Kommandhub\PaystackSW\Webhook\Service\RefundInitializeService;
 use Kommandhub\PaystackSW\Logging\ConfigurableLogger;
+use Kommandhub\PaystackSW\Util\OrderCurrencyResolver;
 use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
@@ -16,6 +17,8 @@ use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
 use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
+use Shopware\Core\Checkout\Order\OrderEntity;
+use Shopware\Core\System\Currency\CurrencyEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundCollection;
@@ -32,6 +35,7 @@ use Shopware\Core\System\StateMachine\Loader\InitialStateIdLoader;
 
 #[CoversClass(RefundInitializeService::class)]
 #[UsesClass(PaystackCurrencyHelper::class)]
+#[\PHPUnit\Framework\Attributes\UsesClass(OrderCurrencyResolver::class)]
 class RefundInitializeServiceTest extends TestCase
 {
     private EntityRepository&MockObject $orderTransactionRepository;
@@ -101,6 +105,7 @@ class RefundInitializeServiceTest extends TestCase
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
         $transaction->setAmount($this->price(100.00)); // refundable base
+        $this->attachCurrency($transaction);
 
         $this->orderTransactionRepository->method('search')
             ->willReturn($this->createSearchResult([$transaction]));
@@ -125,6 +130,7 @@ class RefundInitializeServiceTest extends TestCase
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
         $transaction->setAmount($this->price(100.00)); // refundable base
+        $this->attachCurrency($transaction);
 
         $this->orderTransactionRepository->method('search')
             ->willReturn($this->createSearchResult([$transaction]));
@@ -175,6 +181,7 @@ class RefundInitializeServiceTest extends TestCase
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
         $transaction->setAmount($this->price(100.00)); // refundable base
+        $this->attachCurrency($transaction);
 
         $this->orderTransactionRepository->method('search')
             ->willReturn($this->createSearchResult([$transaction]));
@@ -212,6 +219,7 @@ class RefundInitializeServiceTest extends TestCase
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
         $transaction->setAmount($this->price(100.00)); // refundable base
+        $this->attachCurrency($transaction);
         $transaction->setCaptures(new OrderTransactionCaptureCollection([$capture]));
 
         $this->orderTransactionRepository->method('search')
@@ -249,6 +257,7 @@ class RefundInitializeServiceTest extends TestCase
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
         $transaction->setAmount($this->price(100.00)); // refundable base
+        $this->attachCurrency($transaction);
         $transaction->setCaptures(new OrderTransactionCaptureCollection([$otherCapture]));
 
         $this->orderTransactionRepository->method('search')
@@ -283,6 +292,7 @@ class RefundInitializeServiceTest extends TestCase
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
         $transaction->setAmount($this->price(60.00));
+        $this->attachCurrency($transaction);
         $transaction->setCaptures(new OrderTransactionCaptureCollection([]));
 
         $this->orderTransactionRepository->method('search')
@@ -330,6 +340,7 @@ class RefundInitializeServiceTest extends TestCase
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
         $transaction->setAmount($this->price(60.00));
+        $this->attachCurrency($transaction);
         $transaction->setCaptures(new OrderTransactionCaptureCollection([$priorCapture]));
 
         $this->orderTransactionRepository->method('search')
@@ -374,6 +385,7 @@ class RefundInitializeServiceTest extends TestCase
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
         $transaction->setAmount($this->price(60.00));
+        $this->attachCurrency($transaction);
         $transaction->setCaptures(new OrderTransactionCaptureCollection([$priorCapture]));
 
         $this->orderTransactionRepository->method('search')
@@ -386,6 +398,67 @@ class RefundInitializeServiceTest extends TestCase
 
         $this->orderTransactionCaptureRepository->expects($this->once())->method('create');
         $this->orderTransactionCaptureRefundRepository->expects($this->once())->method('create');
+
+        $this->service->handle($data, $context);
+    }
+
+    public function testHandleAbortsWhenOrderCurrencyCannotBeResolved(): void
+    {
+        // No order/currency loaded -> must fail closed, never assume a currency.
+        $data = [
+            'id' => 'refund-1',
+            'transaction_reference' => 'trans-1',
+            'amount' => 1000,
+        ];
+        $context = Context::createDefaultContext();
+
+        $transaction = new OrderTransactionEntity();
+        $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(100.00));
+
+        $this->orderTransactionRepository->method('search')
+            ->willReturn($this->createSearchResult([$transaction]));
+
+        $this->logger->expects($this->once())
+            ->method('error')
+            ->with($this->stringContains('Unable to resolve the order currency'), $this->isType('array'));
+
+        $this->orderTransactionCaptureRepository->expects($this->never())->method('create');
+        $this->orderTransactionCaptureRefundRepository->expects($this->never())->method('create');
+
+        $this->service->handle($data, $context);
+    }
+
+    /**
+     * The refundable-balance guard must hold in every currency, not just NGN.
+     * In a 0-decimal currency the minor unit *is* the major unit.
+     */
+    public function testHandleRejectsRefundExceedingTransactionTotalInZeroDecimalCurrency(): void
+    {
+        $data = [
+            'id' => 'refund-1',
+            'transaction_reference' => 'trans-1',
+            'amount' => 700, // 700 JPY (0-decimal) vs a 60 JPY transaction
+        ];
+        $context = Context::createDefaultContext();
+
+        $transaction = new OrderTransactionEntity();
+        $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(60.00));
+        $transaction->setCaptures(new OrderTransactionCaptureCollection([]));
+        $this->attachCurrency($transaction, 'JPY');
+
+        $this->orderTransactionRepository->method('search')
+            ->willReturn($this->createSearchResult([$transaction]));
+
+        $this->orderTransactionCaptureRefundRepository->method('searchIds')
+            ->willReturn($this->createEmptyIdSearchResult());
+
+        $this->logger->expects($this->once())
+            ->method('error')
+            ->with($this->stringContains('exceeds the refundable balance'), $this->isType('array'));
+
+        $this->orderTransactionCaptureRefundRepository->expects($this->never())->method('create');
 
         $this->service->handle($data, $context);
     }
@@ -409,6 +482,7 @@ class RefundInitializeServiceTest extends TestCase
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
         $transaction->setAmount($this->price(100.00)); // refundable base
+        $this->attachCurrency($transaction);
         $transaction->setCaptures(new OrderTransactionCaptureCollection([$capture]));
 
         $this->orderTransactionRepository->method('search')
@@ -425,6 +499,19 @@ class RefundInitializeServiceTest extends TestCase
         $this->orderTransactionCaptureRefundRepository->expects($this->never())->method('create');
 
         $this->service->handle($data, $context);
+    }
+
+    /**
+     * The currency must be resolvable on the transaction: the service fails
+     * closed rather than converting amounts with an assumed currency.
+     */
+    private function attachCurrency(OrderTransactionEntity $transaction, string $isoCode = 'NGN'): void
+    {
+        $currency = new CurrencyEntity();
+        $currency->setIsoCode($isoCode);
+        $order = new OrderEntity();
+        $order->setCurrency($currency);
+        $transaction->setOrder($order);
     }
 
     private function price(float $amount): CalculatedPrice
@@ -449,6 +536,7 @@ class RefundInitializeServiceTest extends TestCase
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
         $transaction->setAmount($this->price(100.00)); // refundable base
+        $this->attachCurrency($transaction);
 
         $this->orderTransactionRepository->method('search')
             ->willReturn($this->createSearchResult([$transaction]));
@@ -481,6 +569,7 @@ class RefundInitializeServiceTest extends TestCase
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
         $transaction->setAmount($this->price(100.00)); // refundable base
+        $this->attachCurrency($transaction);
 
         $this->orderTransactionRepository->method('search')
             ->willReturn($this->createSearchResult([$transaction]));

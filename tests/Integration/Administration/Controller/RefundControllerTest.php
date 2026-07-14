@@ -9,6 +9,7 @@ use Kommandhub\PaystackSW\Checkout\Payment\Service\OrderTransactionService;
 use Kommandhub\PaystackSW\Client\PaystackClient;
 use Kommandhub\PaystackSW\Client\Resource\Refund;
 use Kommandhub\PaystackSW\Setting\Service\Config;
+use Kommandhub\PaystackSW\Util\OrderCurrencyResolver;
 use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -38,6 +39,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 #[CoversClass(RefundController::class)]
 #[UsesClass(PaystackCurrencyHelper::class)]
+#[\PHPUnit\Framework\Attributes\UsesClass(OrderCurrencyResolver::class)]
 class RefundControllerTest extends TestCase
 {
     private PaystackClient $paystack;
@@ -369,6 +371,37 @@ class RefundControllerTest extends TestCase
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         $responseData = json_decode($response->getContent(), true);
         $this->assertEquals('Refund amount exceeds the refundable balance of 40 NGN', $responseData['error']);
+    }
+
+    public function testRefundFailsWhenOrderCurrencyCannotBeResolved(): void
+    {
+        // Refundable transaction, but no order/currency loaded -> fail closed.
+        $payload = [
+            'transaction' => 'T12345',
+            'amount' => 50,
+        ];
+
+        $request = new Request([], $payload);
+        $request->setMethod('POST');
+        $context = Context::createDefaultContext();
+
+        $transaction = new OrderTransactionEntity();
+        $transaction->setId('transaction-id');
+        $state = new StateMachineStateEntity();
+        $state->setTechnicalName(OrderTransactionStates::STATE_PAID);
+        $transaction->setStateMachineState($state);
+
+        $this->orderTransactionService->method('findOneByPaystackReference')
+            ->with('T12345', $context)
+            ->willReturn($transaction);
+
+        $this->refundResource->expects($this->never())->method('create');
+
+        $response = $this->controller->refund($request, $context);
+
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $responseData = json_decode($response->getContent(), true);
+        $this->assertEquals('Unable to resolve the order currency for this transaction', $responseData['error']);
     }
 
     private function createRefundableTransaction(): OrderTransactionEntity

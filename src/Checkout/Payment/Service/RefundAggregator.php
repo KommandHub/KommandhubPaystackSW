@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Checkout\Payment\Service;
 
+use Kommandhub\PaystackSW\Util\OrderCurrencyResolver;
 use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
@@ -22,14 +23,20 @@ class RefundAggregator
      * @param string $currentRefundId The ID of the refund currently being processed to include it in calculation.
      *
      * @return RefundAggregationResult The aggregated refund details.
+     *
+     * @throws \RuntimeException When the order currency cannot be resolved.
      */
     public function aggregate(OrderTransactionEntity $transaction, string $currentRefundId): RefundAggregationResult
     {
+        // Resolved once, fail-closed: converting these amounts with a guessed
+        // currency would silently shift every total by a power of ten.
+        $currencyCode = OrderCurrencyResolver::resolveOrFail($transaction);
+
         $captures = [];
         $totalRefunded = 0;
         $totalAmount = PaystackCurrencyHelper::toMinorUnit(
             $transaction->getAmount()->getTotalPrice(),
-            $transaction->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN'
+            $currencyCode
         );
 
         $capturesCollection = $transaction->getCaptures();
@@ -38,7 +45,7 @@ class RefundAggregator
             foreach ($capturesCollection as $capture) {
                 $captureTotal = PaystackCurrencyHelper::toMinorUnit(
                     $capture->getAmount()->getTotalPrice(),
-                    $transaction->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN'
+                    $currencyCode
                 );
                 $captureRefunded = 0;
 
@@ -51,7 +58,7 @@ class RefundAggregator
                         ) {
                             $captureRefunded += PaystackCurrencyHelper::toMinorUnit(
                                 $refund->getAmount()->getTotalPrice(),
-                                $transaction->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN'
+                                $currencyCode
                             );
                         }
                     }

@@ -12,6 +12,116 @@ use PHPUnit\Framework\TestCase;
 class PaystackCurrencyHelperTest extends TestCase
 {
     /**
+     * Every currency the helper knows about, one per decimal class, plus an
+     * unknown code that must fall back to 2 decimals.
+     *
+     * @return array<string, array{0: string}>
+     */
+    public static function everyCurrencyProvider(): array
+    {
+        $currencies = [
+            // 0-decimal
+            'JPY', 'XOF', 'XAF', 'KMF', 'GNF', 'CLP', 'RWF', 'UGX',
+            // 2-decimal
+            'NGN', 'GHS', 'ZAR', 'KES',
+            // 3-decimal
+            'BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND',
+            // unknown -> defaults to 2
+            'ZZZ',
+        ];
+
+        return array_combine(
+            $currencies,
+            array_map(static fn (string $c): array => [$c], $currencies)
+        );
+    }
+
+    /**
+     * Invariant: a round-trip must be *stable* — once an amount has been
+     * normalised to a currency's precision, converting it again must be a no-op.
+     * An unstable conversion means an amount drifts every time it crosses the
+     * Paystack boundary.
+     *
+     * @dataProvider everyCurrencyProvider
+     */
+    public function testMinorUnitRoundTripIsStable(string $currency): void
+    {
+        foreach ([0.0, 1.0, 60.0, 99.99, 1234.5, 0.001] as $amount) {
+            $once = PaystackCurrencyHelper::fromMinorUnit(
+                PaystackCurrencyHelper::toMinorUnit($amount, $currency),
+                $currency
+            );
+            $twice = PaystackCurrencyHelper::fromMinorUnit(
+                PaystackCurrencyHelper::toMinorUnit($once, $currency),
+                $currency
+            );
+
+            static::assertSame(
+                $once,
+                $twice,
+                sprintf('Round-trip is not stable for %s at amount %s', $currency, (string)$amount)
+            );
+            static::assertIsInt(
+                PaystackCurrencyHelper::toMinorUnit($amount, $currency),
+                sprintf('%s minor unit must be an integer', $currency)
+            );
+        }
+    }
+
+    /**
+     * Invariant: an amount already expressed at the currency's precision must
+     * survive a round-trip exactly. Uses one representative amount per decimal
+     * class so the expectation is independent of the helper's own table.
+     */
+    public function testExactRoundTripForAmountsAtCurrencyPrecision(): void
+    {
+        $cases = [
+            ['JPY', 700.0],    // 0-decimal
+            ['XOF', 60.0],     // 0-decimal
+            ['NGN', 99.99],    // 2-decimal
+            ['ZAR', 1234.50],  // 2-decimal
+            ['KWD', 10.125],   // 3-decimal
+            ['ZZZ', 5.25],     // unknown -> 2-decimal default
+        ];
+
+        foreach ($cases as [$currency, $amount]) {
+            static::assertSame(
+                $amount,
+                PaystackCurrencyHelper::fromMinorUnit(
+                    PaystackCurrencyHelper::toMinorUnit($amount, $currency),
+                    $currency
+                ),
+                sprintf('%s lost value round-tripping %s', $currency, (string)$amount)
+            );
+        }
+    }
+
+    /**
+     * Invariant: minor units must never be negative for a positive amount, and
+     * the conversion must be monotonic — a larger amount is never fewer minor
+     * units. Guards against a decimals table regression.
+     *
+     * @dataProvider everyCurrencyProvider
+     */
+    public function testConversionIsMonotonicAndNonNegative(string $currency): void
+    {
+        $previous = -1;
+
+        foreach ([0.0, 0.5, 1.0, 10.0, 60.0, 700.0] as $amount) {
+            $minor = PaystackCurrencyHelper::toMinorUnit($amount, $currency);
+
+            static::assertGreaterThanOrEqual(0, $minor, sprintf('%s produced negative minor units', $currency));
+            static::assertGreaterThanOrEqual(
+                $previous,
+                $minor,
+                sprintf('%s conversion is not monotonic at %s', $currency, (string)$amount)
+            );
+
+            $previous = $minor;
+        }
+    }
+
+    /**
      * @dataProvider toMinorUnitProvider
      */
     public function testToMinorUnit(float $amount, string $currency, int $expected): void

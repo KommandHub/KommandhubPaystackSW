@@ -8,6 +8,7 @@ use Kommandhub\PaystackSW\Webhook\Service\RefundInitializeService;
 use Kommandhub\PaystackSW\Webhook\Event\RefundPendingEvent;
 use Kommandhub\PaystackSW\Webhook\Event\RefundProcessedEvent;
 use Kommandhub\PaystackSW\Logging\ConfigurableLogger;
+use Kommandhub\PaystackSW\Util\OrderCurrencyResolver;
 use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
@@ -169,7 +170,20 @@ final readonly class WebhookSubscriber
         array $data,
         string $refundReference
     ): bool {
-        $currencyIso = $refund->getTransactionCapture()?->getTransaction()?->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN';
+        $transaction = $refund->getTransactionCapture()?->getTransaction();
+        $currencyIso = $transaction !== null ? OrderCurrencyResolver::resolve($transaction) : null;
+
+        // Fail closed: without a known currency the amounts are not comparable,
+        // so the refund must not be finalized.
+        if ($currencyIso === null) {
+            $this->logger->error('[Paystack] Unable to resolve the order currency; refusing to process refund.', [
+                'refund_id' => $refund->getId(),
+                'paystack_refund_id' => $refundReference,
+            ]);
+
+            return false;
+        }
+
         $expectedMinor = PaystackCurrencyHelper::toMinorUnit($refund->getAmount()->getTotalPrice(), $currencyIso);
         $rawAmount = $data['amount'] ?? null;
         $receivedMinor = is_numeric($rawAmount) ? (int)$rawAmount : null;

@@ -8,6 +8,7 @@ use Kommandhub\PaystackSW\Webhook\Service\RefundInitializeService;
 use Kommandhub\PaystackSW\Logging\ConfigurableLogger;
 use Kommandhub\PaystackSW\Webhook\Event\RefundPendingEvent;
 use Kommandhub\PaystackSW\Webhook\Event\RefundProcessedEvent;
+use Kommandhub\PaystackSW\Util\OrderCurrencyResolver;
 use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Kommandhub\PaystackSW\Webhook\Subscriber\WebhookSubscriber;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -15,7 +16,11 @@ use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
 use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundEntity;
+use Shopware\Core\Checkout\Order\OrderEntity;
+use Shopware\Core\System\Currency\CurrencyEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
 use Shopware\Core\Checkout\Payment\Cart\PaymentRefundProcessor;
 use Shopware\Core\Framework\Context;
@@ -28,6 +33,7 @@ use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTr
 #[CoversClass(WebhookSubscriber::class)]
 #[\PHPUnit\Framework\Attributes\UsesClass(RefundInitializeService::class)]
 #[\PHPUnit\Framework\Attributes\UsesClass(PaystackCurrencyHelper::class)]
+#[\PHPUnit\Framework\Attributes\UsesClass(OrderCurrencyResolver::class)]
 class WebhookSubscriberTest extends TestCase
 {
     private RefundInitializeService $refundInitializeService;
@@ -262,6 +268,39 @@ class WebhookSubscriberTest extends TestCase
         $this->listener->onRefundProcessedEvent($event);
     }
 
+    public function testOnRefundProcessedEventAbortsWhenCurrencyCannotBeResolved(): void
+    {
+        $context = Context::createDefaultContext();
+        $data = [
+            'id' => 'ref_123',
+            'transaction_reference' => 'T123',
+            'amount' => 1000,
+        ];
+        $event = $this->createMock(RefundProcessedEvent::class);
+        $event->method('getData')->willReturn($data);
+        $event->method('getContext')->willReturn($context);
+
+        // Refund without a resolvable capture -> transaction -> order -> currency.
+        $refund = new OrderTransactionCaptureRefundEntity();
+        $refund->setId('sw_refund_123');
+        $refund->setAmount(new CalculatedPrice(10.00, 10.00, new CalculatedTaxCollection(), new TaxRuleCollection()));
+        $state = new StateMachineStateEntity();
+        $state->setTechnicalName(OrderTransactionCaptureRefundStates::STATE_OPEN);
+        $refund->setStateMachineState($state);
+
+        $this->orderTransactionCaptureRefundRepository->expects($this->once())
+            ->method('search')
+            ->willReturn($this->createRefundSearchResult($refund));
+
+        $this->logger->expects($this->once())
+            ->method('error')
+            ->with($this->stringContains('Unable to resolve the order currency'), $this->isType('array'));
+
+        $this->paymentRefundProcessor->expects($this->never())->method('processRefund');
+
+        $this->listener->onRefundProcessedEvent($event);
+    }
+
     public function testOnRefundProcessedEventRejectsMissingAmount(): void
     {
         $context = Context::createDefaultContext();
@@ -286,7 +325,7 @@ class WebhookSubscriberTest extends TestCase
         $this->listener->onRefundProcessedEvent($event);
     }
 
-    private function createRefundEntity(string $id, string $state, float $amount = 10.00): OrderTransactionCaptureRefundEntity
+    private function createRefundEntity(string $id, string $state, float $amount = 10.00, string $currencyIso = 'NGN'): OrderTransactionCaptureRefundEntity
     {
         $refund = new OrderTransactionCaptureRefundEntity();
         $refund->setId($id);
@@ -300,6 +339,20 @@ class WebhookSubscriberTest extends TestCase
         $stateEntity = new StateMachineStateEntity();
         $stateEntity->setTechnicalName($state);
         $refund->setStateMachineState($stateEntity);
+
+        // Full association chain: the subscriber resolves the order currency
+        // through capture -> transaction -> order and fails closed without it.
+        $currency = new CurrencyEntity();
+        $currency->setIsoCode($currencyIso);
+        $order = new OrderEntity();
+        $order->setCurrency($currency);
+        $transaction = new OrderTransactionEntity();
+        $transaction->setId('trans-id-123');
+        $transaction->setOrder($order);
+        $capture = new OrderTransactionCaptureEntity();
+        $capture->setId('capture-id-1');
+        $capture->setTransaction($transaction);
+        $refund->setTransactionCapture($capture);
 
         return $refund;
     }

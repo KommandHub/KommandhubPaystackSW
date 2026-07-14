@@ -6,6 +6,7 @@ namespace Kommandhub\PaystackSW\Tests\Unit\Checkout\Payment\Service;
 
 use Kommandhub\PaystackSW\Checkout\Payment\Service\RefundAggregationResult;
 use Kommandhub\PaystackSW\Checkout\Payment\Service\RefundAggregator;
+use Kommandhub\PaystackSW\Util\OrderCurrencyResolver;
 use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
@@ -14,6 +15,8 @@ use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
 use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
+use Shopware\Core\Checkout\Order\OrderEntity;
+use Shopware\Core\System\Currency\CurrencyEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundCollection;
@@ -24,6 +27,7 @@ use Shopware\Core\System\StateMachine\Aggregation\StateMachineState\StateMachine
 #[CoversClass(RefundAggregator::class)]
 #[UsesClass(RefundAggregationResult::class)]
 #[UsesClass(PaystackCurrencyHelper::class)]
+#[\PHPUnit\Framework\Attributes\UsesClass(OrderCurrencyResolver::class)]
 class RefundAggregatorTest extends TestCase
 {
     private RefundAggregator $aggregator;
@@ -80,13 +84,21 @@ class RefundAggregatorTest extends TestCase
         $this->assertTrue($result->isFullyRefunded);
     }
 
-    private function createOrderTransaction(float $amount): OrderTransactionEntity
+    private function createOrderTransaction(float $amount, string $currencyIso = 'NGN'): OrderTransactionEntity
     {
         $transaction = new OrderTransactionEntity();
         $transaction->setId('transaction-id');
         $transaction->setAmount(
             new CalculatedPrice($amount, $amount, new CalculatedTaxCollection(), new TaxRuleCollection())
         );
+
+        // The currency must be resolvable: amounts are converted per-currency and
+        // the aggregator fails closed rather than assuming one.
+        $currency = new CurrencyEntity();
+        $currency->setIsoCode($currencyIso);
+        $order = new OrderEntity();
+        $order->setCurrency($currency);
+        $transaction->setOrder($order);
 
         return $transaction;
     }

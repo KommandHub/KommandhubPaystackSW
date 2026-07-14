@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Administration\Controller;
 
+use Kommandhub\PaystackSW\Util\OrderCurrencyResolver;
 use Kommandhub\PaystackSW\Util\PaystackConstants;
 use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Kommandhub\PaystackSW\Checkout\Payment\Service\OrderTransactionService;
@@ -97,7 +98,13 @@ class RefundController extends AbstractController
         ];
 
         if ($amount !== null) {
-            $currencyIso = $transaction->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN';
+            // Fail closed: never convert a refund with an assumed currency.
+            $currencyIso = OrderCurrencyResolver::resolve($transaction);
+
+            if ($currencyIso === null) {
+                return $this->errorResponse('Unable to resolve the order currency for this transaction');
+            }
+
             $minorAmount = PaystackCurrencyHelper::toMinorUnit((float)$amount, $currencyIso);
 
             $minAmountLimit = $this->config->get('minimumRefundAmount', PaystackConstants::MINIMUM_REFUND_AMOUNT, $salesChannelId);

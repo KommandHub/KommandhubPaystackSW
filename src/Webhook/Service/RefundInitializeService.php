@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kommandhub\PaystackSW\Webhook\Service;
 
+use Kommandhub\PaystackSW\Util\OrderCurrencyResolver;
 use Kommandhub\PaystackSW\Util\PaystackConstants;
 use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Kommandhub\PaystackSW\Logging\ConfigurableLogger;
@@ -59,8 +60,19 @@ readonly class RefundInitializeService
             return;
         }
 
+        // Fail closed: never convert a refund with an assumed currency.
+        $currencyCode = OrderCurrencyResolver::resolve($transaction);
+
+        if ($currencyCode === null) {
+            $this->logger->error('[Paystack] Unable to resolve the order currency; refusing to initialize refund.', [
+                'transactionReference' => $transactionReference,
+                'transactionId' => $transaction->getId(),
+            ]);
+
+            return;
+        }
+
         $rawAmount = $data['amount'] ?? 0;
-        $currencyCode = $transaction->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN';
         $refundAmount = PaystackCurrencyHelper::fromMinorUnit(
             is_numeric($rawAmount) ? (int)$rawAmount : 0,
             $currencyCode
