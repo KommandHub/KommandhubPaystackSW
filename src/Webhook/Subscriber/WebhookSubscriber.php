@@ -8,6 +8,7 @@ use Kommandhub\PaystackSW\Webhook\Service\RefundInitializeService;
 use Kommandhub\PaystackSW\Webhook\Event\RefundPendingEvent;
 use Kommandhub\PaystackSW\Webhook\Event\RefundProcessedEvent;
 use Kommandhub\PaystackSW\Logging\ConfigurableLogger;
+use Kommandhub\PaystackSW\Util\PaystackCurrencyHelper;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
 use Shopware\Core\Checkout\Payment\Cart\PaymentRefundProcessor;
@@ -98,6 +99,10 @@ final readonly class WebhookSubscriber
             return;
         }
 
+        if (!$this->refundAmountMatches($refund, $data, $refundReference)) {
+            return;
+        }
+
         if ($this->isAlreadyProcessed($refund)) {
             $this->logger->info('[Paystack] Refund already processed.', [
                 'refund_id' => $refund->getId(),
@@ -139,11 +144,49 @@ final readonly class WebhookSubscriber
             )
         );
         $criteria->addAssociation('stateMachineState');
+        // Needed to resolve the order currency when verifying the refund amount.
+        $criteria->addAssociation('transactionCapture.transaction.order.currency');
         $criteria->setLimit(1);
 
         $refund = $this->orderTransactionCaptureRefundRepository->search($criteria, $context)->first();
 
         return $refund instanceof OrderTransactionCaptureRefundEntity ? $refund : null;
+    }
+
+    /**
+     * Ensures the amount Paystack reports as processed matches the Shopware
+     * refund we are about to finalize.
+     *
+     * The webhook payload is attacker-controllable and may be redelivered, so a
+     * refund is never finalized on an amount we cannot confirm. Compared in
+     * minor units so float representation cannot cause a false mismatch and
+     * per-currency decimals are respected.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function refundAmountMatches(
+        OrderTransactionCaptureRefundEntity $refund,
+        array $data,
+        string $refundReference
+    ): bool {
+        $currencyIso = $refund->getTransactionCapture()?->getTransaction()?->getOrder()?->getCurrency()?->getIsoCode() ?? 'NGN';
+        $expectedMinor = PaystackCurrencyHelper::toMinorUnit($refund->getAmount()->getTotalPrice(), $currencyIso);
+        $rawAmount = $data['amount'] ?? null;
+        $receivedMinor = is_numeric($rawAmount) ? (int)$rawAmount : null;
+
+        if ($receivedMinor === $expectedMinor) {
+            return true;
+        }
+
+        $this->logger->error('[Paystack] Refund amount does not match the refund being processed.', [
+            'refund_id' => $refund->getId(),
+            'paystack_refund_id' => $refundReference,
+            'expected' => $expectedMinor,
+            'received' => $receivedMinor,
+            'currency' => $currencyIso,
+        ]);
+
+        return false;
     }
 
     private function isAlreadyProcessed(?OrderTransactionCaptureRefundEntity $refund): bool

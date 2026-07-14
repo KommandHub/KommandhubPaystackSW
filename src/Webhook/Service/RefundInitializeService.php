@@ -11,6 +11,7 @@ use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
 use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
 use Shopware\Core\Framework\Context;
@@ -69,15 +70,21 @@ readonly class RefundInitializeService
             return;
         }
 
-        $captureId = $this->getOrCreateCapture($externalReference, $transaction, $refundAmount, $context);
-
-        if ($captureId === '') {
-            return; // @codeCoverageIgnore
-        }
-
+        // Deduplicate before validating the balance: a redelivery of a refund we
+        // already stored must be skipped quietly, not reported as an over-refund.
         if ($this->refundExists($externalReference, $context)) {
             $this->logger->info('[Paystack] Refund already exists: ' . $externalReference);
 
+            return;
+        }
+
+        if (!$this->isWithinRefundableAmount($transaction, $refundAmount, $currencyCode, $externalReference)) {
+            return;
+        }
+
+        $captureId = $this->getOrCreateCapture($externalReference, $transaction, $refundAmount, $currencyCode, $context);
+
+        if ($captureId === '') {
             return;
         }
 
@@ -120,6 +127,90 @@ readonly class RefundInitializeService
     }
 
     /**
+     * Ensures the refund reported by Paystack fits within what is still
+     * refundable on the order transaction.
+     *
+     * The refundable base is the transaction total (NOT the sum of captures:
+     * this integration synthesises one capture per refund, so captures grow with
+     * every refund and can never bound it). Refunds that are not failed or
+     * cancelled are already committed against that total.
+     *
+     * Without this, a webhook could create a capture/refund for any amount —
+     * e.g. a 700.00 refund against a 60.00 transaction.
+     */
+    private function isWithinRefundableAmount(
+        OrderTransactionEntity $transaction,
+        float $refundAmount,
+        string $currencyCode,
+        string $externalReference
+    ): bool {
+        $transactionTotal = PaystackCurrencyHelper::toMinorUnit(
+            $transaction->getAmount()->getTotalPrice(),
+            $currencyCode
+        );
+
+        $alreadyRefunded = $this->sumCommittedRefunds($transaction, $currencyCode);
+        $remaining = max(0, $transactionTotal - $alreadyRefunded);
+        $requested = PaystackCurrencyHelper::toMinorUnit($refundAmount, $currencyCode);
+
+        if ($requested <= $remaining) {
+            return true;
+        }
+
+        $this->logger->error('[Paystack] Refund amount exceeds the refundable balance of the transaction.', [
+            'externalReference' => $externalReference,
+            'transactionId' => $transaction->getId(),
+            'transactionTotal' => $transactionTotal,
+            'alreadyRefunded' => $alreadyRefunded,
+            'remaining' => $remaining,
+            'requested' => $requested,
+            'currency' => $currencyCode,
+        ]);
+
+        return false;
+    }
+
+    /**
+     * Sums refunds already committed against the transaction, in minor units.
+     * Failed and cancelled refunds release their amount and are excluded.
+     */
+    private function sumCommittedRefunds(OrderTransactionEntity $transaction, string $currencyCode): int
+    {
+        $captures = $transaction->getCaptures();
+
+        if ($captures === null) {
+            return 0;
+        }
+
+        $total = 0;
+
+        foreach ($captures as $capture) {
+            $refunds = $capture->getRefunds();
+
+            if ($refunds === null) {
+                continue;
+            }
+
+            foreach ($refunds as $refund) {
+                $state = $refund->getStateMachineState()?->getTechnicalName();
+
+                if ($state === OrderTransactionCaptureRefundStates::STATE_FAILED
+                    || $state === OrderTransactionCaptureRefundStates::STATE_CANCELLED
+                ) {
+                    continue;
+                }
+
+                $total += PaystackCurrencyHelper::toMinorUnit(
+                    $refund->getAmount()->getTotalPrice(),
+                    $currencyCode
+                );
+            }
+        }
+
+        return $total;
+    }
+
+    /**
      * Finds the order transaction by the Paystack reference.
      */
     private function findTransaction(string $reference, Context $context): ?OrderTransactionEntity
@@ -132,6 +223,10 @@ readonly class RefundInitializeService
             )
         );
         $criteria->addAssociation('captures');
+        // Needed to resolve the order currency and to sum what has already been
+        // refunded when validating the requested refund amount.
+        $criteria->addAssociation('order.currency');
+        $criteria->addAssociation('captures.refunds.stateMachineState');
 
         /** @var OrderTransactionEntity|null $transaction */
         $transaction = $this->orderTransactionRepository->search($criteria, $context)->first();
@@ -155,27 +250,52 @@ readonly class RefundInitializeService
         string $externalReference,
         OrderTransactionEntity $transaction,
         float $captureAmount,
+        string $currencyCode,
         Context $context
     ): string {
         $captureId = Uuid::fromStringToHex('paystack-capture-' . $externalReference);
 
-        if ($this->entityExists($this->orderTransactionCaptureRepository, $captureId, $context)) {
-            return $captureId;
-        }
+        $existingCapture = $this->findCaptureById($captureId, $context)
+            ?? $this->findExistingCaptureInTransaction($externalReference, $transaction);
 
-        $existingCaptureId = $this->findExistingCaptureInTransaction($externalReference, $transaction);
+        if ($existingCapture !== null) {
+            // The webhook payload is attacker-controllable and a refund event can
+            // be redelivered; never attach a refund to a capture it does not match.
+            if (!$this->captureAmountMatches($existingCapture, $captureAmount, $currencyCode)) {
+                $this->logger->error('[Paystack] Refund amount does not match the capture amount.', [
+                    'externalReference' => $externalReference,
+                    'captureId' => $existingCapture->getId(),
+                    'captureAmount' => $existingCapture->getAmount()->getTotalPrice(),
+                    'refundAmount' => $captureAmount,
+                    'currency' => $currencyCode,
+                ]);
 
-        if ($existingCaptureId !== null) {
-            return $existingCaptureId;
+                return '';
+            }
+
+            return $existingCapture->getId();
         }
 
         return $this->createNewCapture($captureId, $externalReference, $transaction, $captureAmount, $context);
     }
 
     /**
+     * Loads a capture by its deterministic id.
+     */
+    private function findCaptureById(string $captureId, Context $context): ?OrderTransactionCaptureEntity
+    {
+        /** @var OrderTransactionCaptureEntity|null $capture */
+        $capture = $this->orderTransactionCaptureRepository
+            ->search(new Criteria([$captureId]), $context)
+            ->first();
+
+        return $capture;
+    }
+
+    /**
      * Finds an existing capture in the transaction's captures.
      */
-    private function findExistingCaptureInTransaction(string $externalReference, OrderTransactionEntity $transaction): ?string
+    private function findExistingCaptureInTransaction(string $externalReference, OrderTransactionEntity $transaction): ?OrderTransactionCaptureEntity
     {
         $captures = $transaction->getCaptures();
 
@@ -185,11 +305,26 @@ readonly class RefundInitializeService
 
         foreach ($captures as $capture) {
             if ($capture->getExternalReference() === $externalReference) {
-                return $capture->getId();
+                return $capture;
             }
         }
 
-        return null; // @codeCoverageIgnore
+        return null;
+    }
+
+    /**
+     * Whether the refund amount from the webhook matches the capture being refunded.
+     *
+     * Compared in minor units so float representation cannot cause a false
+     * mismatch, and per-currency decimals are respected.
+     */
+    private function captureAmountMatches(
+        OrderTransactionCaptureEntity $capture,
+        float $refundAmount,
+        string $currencyCode
+    ): bool {
+        return PaystackCurrencyHelper::toMinorUnit($capture->getAmount()->getTotalPrice(), $currencyCode)
+            === PaystackCurrencyHelper::toMinorUnit($refundAmount, $currencyCode);
     }
 
     /**

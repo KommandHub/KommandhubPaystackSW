@@ -11,10 +11,17 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
+use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
+use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCapture\OrderTransactionCaptureEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundCollection;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransactionCaptureRefund\OrderTransactionCaptureRefundStates;
+use Shopware\Core\System\StateMachine\Aggregation\StateMachineState\StateMachineStateEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
@@ -93,6 +100,7 @@ class RefundInitializeServiceTest extends TestCase
 
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(100.00)); // refundable base
 
         $this->orderTransactionRepository->method('search')
             ->willReturn($this->createSearchResult([$transaction]));
@@ -116,6 +124,7 @@ class RefundInitializeServiceTest extends TestCase
 
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(100.00)); // refundable base
 
         $this->orderTransactionRepository->method('search')
             ->willReturn($this->createSearchResult([$transaction]));
@@ -165,6 +174,7 @@ class RefundInitializeServiceTest extends TestCase
 
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(100.00)); // refundable base
 
         $this->orderTransactionRepository->method('search')
             ->willReturn($this->createSearchResult([$transaction]));
@@ -196,9 +206,12 @@ class RefundInitializeServiceTest extends TestCase
         $capture = new OrderTransactionCaptureEntity();
         $capture->setId('capture-id-999');
         $capture->setExternalReference($externalReference);
+        // Matches the webhook refund amount (1000 minor units = 10.00 NGN).
+        $capture->setAmount($this->price(10.00));
 
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(100.00)); // refundable base
         $transaction->setCaptures(new OrderTransactionCaptureCollection([$capture]));
 
         $this->orderTransactionRepository->method('search')
@@ -218,6 +231,212 @@ class RefundInitializeServiceTest extends TestCase
         $this->service->handle($data, $context);
     }
 
+    public function testHandleCreatesNewCaptureWhenNoTransactionCaptureMatches(): void
+    {
+        $data = [
+            'id' => 'refund-2',
+            'transaction_reference' => 'trans-1',
+            'amount' => 1000,
+        ];
+        $context = Context::createDefaultContext();
+
+        // The transaction already has a capture, but for a different refund.
+        $otherCapture = new OrderTransactionCaptureEntity();
+        $otherCapture->setId('capture-id-other');
+        $otherCapture->setExternalReference('refund-1-trans-1');
+        $otherCapture->setAmount($this->price(99.00));
+
+        $transaction = new OrderTransactionEntity();
+        $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(100.00)); // refundable base
+        $transaction->setCaptures(new OrderTransactionCaptureCollection([$otherCapture]));
+
+        $this->orderTransactionRepository->method('search')
+            ->willReturn($this->createSearchResult([$transaction]));
+
+        $this->initialStateIdLoader->method('get')->willReturn('state-id');
+
+        // Falls through to creating a capture for this refund.
+        $this->orderTransactionCaptureRepository->expects($this->once())
+            ->method('create');
+
+        $this->orderTransactionCaptureRefundRepository->method('searchIds')
+            ->willReturn($this->createEmptyIdSearchResult());
+
+        $this->orderTransactionCaptureRefundRepository->expects($this->once())
+            ->method('create');
+
+        $this->service->handle($data, $context);
+    }
+
+    public function testHandleRejectsRefundExceedingTransactionTotal(): void
+    {
+        // Real payload shape: a 700.00 NGN refund against a 60.00 NGN transaction.
+        $data = [
+            'id' => '17665402',
+            'transaction_reference' => '4dw6pi3639',
+            'amount' => 70000,
+            'currency' => 'NGN',
+        ];
+        $context = Context::createDefaultContext();
+
+        $transaction = new OrderTransactionEntity();
+        $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(60.00));
+        $transaction->setCaptures(new OrderTransactionCaptureCollection([]));
+
+        $this->orderTransactionRepository->method('search')
+            ->willReturn($this->createSearchResult([$transaction]));
+
+        $this->orderTransactionCaptureRefundRepository->method('searchIds')
+            ->willReturn($this->createEmptyIdSearchResult());
+
+        $this->logger->expects($this->once())
+            ->method('error')
+            ->with(
+                $this->stringContains('exceeds the refundable balance'),
+                $this->isType('array')
+            );
+
+        $this->orderTransactionCaptureRepository->expects($this->never())->method('create');
+        $this->orderTransactionCaptureRefundRepository->expects($this->never())->method('create');
+
+        $this->service->handle($data, $context);
+    }
+
+    public function testHandleRejectsRefundExceedingRemainingBalanceAfterPriorRefund(): void
+    {
+        // 60.00 transaction, 50.00 already refunded -> only 10.00 remains.
+        $data = [
+            'id' => 'refund-2',
+            'transaction_reference' => 'trans-1',
+            'amount' => 2000, // 20.00 requested
+        ];
+        $context = Context::createDefaultContext();
+
+        $priorRefund = new OrderTransactionCaptureRefundEntity();
+        $priorRefund->setId('prior-refund');
+        $priorRefund->setAmount($this->price(50.00));
+        $priorState = new StateMachineStateEntity();
+        $priorState->setTechnicalName(OrderTransactionCaptureRefundStates::STATE_COMPLETED);
+        $priorRefund->setStateMachineState($priorState);
+
+        $priorCapture = new OrderTransactionCaptureEntity();
+        $priorCapture->setId('capture-prior');
+        $priorCapture->setExternalReference('refund-1-trans-1');
+        $priorCapture->setAmount($this->price(50.00));
+        $priorCapture->setRefunds(new OrderTransactionCaptureRefundCollection([$priorRefund]));
+
+        $transaction = new OrderTransactionEntity();
+        $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(60.00));
+        $transaction->setCaptures(new OrderTransactionCaptureCollection([$priorCapture]));
+
+        $this->orderTransactionRepository->method('search')
+            ->willReturn($this->createSearchResult([$transaction]));
+
+        $this->orderTransactionCaptureRefundRepository->method('searchIds')
+            ->willReturn($this->createEmptyIdSearchResult());
+
+        $this->logger->expects($this->once())
+            ->method('error')
+            ->with($this->stringContains('exceeds the refundable balance'), $this->isType('array'));
+
+        $this->orderTransactionCaptureRefundRepository->expects($this->never())->method('create');
+
+        $this->service->handle($data, $context);
+    }
+
+    public function testHandleIgnoresFailedRefundsWhenComputingRefundableBalance(): void
+    {
+        // 60.00 transaction with a 50.00 FAILED refund -> the full 60.00 is still
+        // refundable, so a 20.00 refund must be accepted.
+        $data = [
+            'id' => 'refund-2',
+            'transaction_reference' => 'trans-1',
+            'amount' => 2000, // 20.00
+        ];
+        $context = Context::createDefaultContext();
+
+        $failedRefund = new OrderTransactionCaptureRefundEntity();
+        $failedRefund->setId('failed-refund');
+        $failedRefund->setAmount($this->price(50.00));
+        $failedState = new StateMachineStateEntity();
+        $failedState->setTechnicalName(OrderTransactionCaptureRefundStates::STATE_FAILED);
+        $failedRefund->setStateMachineState($failedState);
+
+        $priorCapture = new OrderTransactionCaptureEntity();
+        $priorCapture->setId('capture-prior');
+        $priorCapture->setExternalReference('refund-1-trans-1');
+        $priorCapture->setAmount($this->price(50.00));
+        $priorCapture->setRefunds(new OrderTransactionCaptureRefundCollection([$failedRefund]));
+
+        $transaction = new OrderTransactionEntity();
+        $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(60.00));
+        $transaction->setCaptures(new OrderTransactionCaptureCollection([$priorCapture]));
+
+        $this->orderTransactionRepository->method('search')
+            ->willReturn($this->createSearchResult([$transaction]));
+
+        $this->initialStateIdLoader->method('get')->willReturn('state-id');
+
+        $this->orderTransactionCaptureRefundRepository->method('searchIds')
+            ->willReturn($this->createEmptyIdSearchResult());
+
+        $this->orderTransactionCaptureRepository->expects($this->once())->method('create');
+        $this->orderTransactionCaptureRefundRepository->expects($this->once())->method('create');
+
+        $this->service->handle($data, $context);
+    }
+
+    public function testHandleRejectsRefundWhenAmountDoesNotMatchCapture(): void
+    {
+        $data = [
+            'id' => 'refund-1',
+            'transaction_reference' => 'trans-1',
+            'amount' => 1000, // 10.00 NGN
+        ];
+        $context = Context::createDefaultContext();
+
+        $externalReference = 'refund-1-trans-1';
+        $capture = new OrderTransactionCaptureEntity();
+        $capture->setId('capture-id-999');
+        $capture->setExternalReference($externalReference);
+        // Capture is for 5.00 NGN — the webhook claims a 10.00 NGN refund.
+        $capture->setAmount($this->price(5.00));
+
+        $transaction = new OrderTransactionEntity();
+        $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(100.00)); // refundable base
+        $transaction->setCaptures(new OrderTransactionCaptureCollection([$capture]));
+
+        $this->orderTransactionRepository->method('search')
+            ->willReturn($this->createSearchResult([$transaction]));
+
+        $this->logger->expects($this->once())
+            ->method('error')
+            ->with(
+                $this->stringContains('does not match the capture amount'),
+                $this->isType('array')
+            );
+
+        $this->orderTransactionCaptureRepository->expects($this->never())->method('create');
+        $this->orderTransactionCaptureRefundRepository->expects($this->never())->method('create');
+
+        $this->service->handle($data, $context);
+    }
+
+    private function price(float $amount): CalculatedPrice
+    {
+        return new CalculatedPrice(
+            $amount,
+            $amount,
+            new CalculatedTaxCollection(),
+            new TaxRuleCollection()
+        );
+    }
+
     public function testHandleCreateCaptureFailure(): void
     {
         $data = [
@@ -229,6 +448,7 @@ class RefundInitializeServiceTest extends TestCase
 
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(100.00)); // refundable base
 
         $this->orderTransactionRepository->method('search')
             ->willReturn($this->createSearchResult([$transaction]));
@@ -260,6 +480,7 @@ class RefundInitializeServiceTest extends TestCase
 
         $transaction = new OrderTransactionEntity();
         $transaction->setId('trans-id-123');
+        $transaction->setAmount($this->price(100.00)); // refundable base
 
         $this->orderTransactionRepository->method('search')
             ->willReturn($this->createSearchResult([$transaction]));
