@@ -1,20 +1,53 @@
 {
     "name": "kommandhub/paystack-sw",
-    "description": "Integrates the Paystack payment gateway into Shopware 6.",
+    "description": "Integrate the Paystack payment gateway into Shopware 6 to accept secure payments via credit cards, bank transfers, and mobile money. Expand your business across Africa with ease.",
     "type": "shopware-platform-plugin",
-    "version": "1.0.0",
+    "version": "0.9.0-beta.1",
     "license": "MIT",
     "keywords": [
         "shopware",
         "shopware6",
-        "plugin",
-        "payment",
+        "shopware-plugin",
+        "shopware-payment",
         "paystack",
-        "gateway",
-        "e-commerce",
+        "payment",
+        "payment-gateway",
+        "checkout",
+        "refund",
+        "webhook",
+        "mobile-money",
+        "ussd",
+        "bank-transfer",
         "africa",
-        "kommandhub"
+        "nigeria",
+        "ecommerce"
     ],
+    "homepage": "https://github.com/KommandHub/KommandhubPaystackSW",
+    "authors": [
+        {
+            "name": "Kommandhub Limited",
+            "email": "info@kommandhub.com",
+            "homepage": "https://kommandhub.com",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "email": "info@kommandhub.com",
+        "issues": "https://github.com/KommandHub/KommandhubPaystackSW/issues",
+        "source": "https://github.com/KommandHub/KommandhubPaystackSW",
+        "docs": "https://github.com/KommandHub/KommandhubPaystackSW/blob/main/README.md"
+    },
+    "require": {
+        "shopware/core": "~6.6.0 || ~6.7.0",
+        "shopware/storefront": "~6.6.0 || ~6.7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5",
+        "shopware/dev-tools": "^1.5",
+        "friendsofphp/php-cs-fixer": "^3.94",
+        "phpstan/phpstan": "^2.1",
+        "rregeer/phpunit-coverage-check": "^0.3.1"
+    },
     "autoload": {
         "psr-4": {
             "Kommandhub\\PaystackSW\\": "src/"
@@ -25,40 +58,34 @@
             "Kommandhub\\PaystackSW\\Tests\\": "tests/"
         }
     },
-    "authors": [
-        {
-            "name": "Kommandhub Limited",
-            "email": "admin@kommandhub.com",
-            "role": "Developer"
-        }
-    ],
-    "require": {
-        "shopware/core": "~6.6.0 || ~6.7.0",
-        "kommandhub/paystack": "^1.0"
-    },
-    "require-dev": {
-        "phpunit/phpunit": "^11.5",
-        "shopware/dev-tools": "^1.5",
-        "friendsofphp/php-cs-fixer": "^3.94",
-        "phpstan/phpstan": "^2.1",
-        "rregeer/phpunit-coverage-check": "^0.3.1"
-    },
     "extra": {
         "shopware-plugin-class": "Kommandhub\\PaystackSW\\KommandhubPaystackSW",
         "label": {
-            "de-DE": "Paystack für Shopware",
-            "en-GB": "Paystack for Shopware",
-            "fr-FR": "Paystack pour Shopware"
+            "de-DE": "Paystack Zahlung",
+            "en-GB": "Paystack Payment",
+            "fr-FR": "Paystack Paiement"
         },
         "description": {
-            "de-DE": "Integriert die Paystack-Zahlungs-Gateway in Shopware 6.",
-            "en-GB": "Integrates the Paystack payment gateway into Shopware 6.",
-            "fr-FR": "Intègre la passerelle de paiement Paystack dans Shopware 6."
+            "de-DE": "Integrieren Sie das Paystack-Zahlungsgateway nahtlos in Shopware 6. Ermöglichen Sie Ihren Kunden sichere Zahlungen per Kreditkarte, Banküberweisung und Mobile Money in ganz Afrika.",
+            "en-GB": "Integrate the Paystack payment gateway into Shopware 6 to accept secure payments via credit cards, bank transfers, and mobile money. Expand your business across Africa with ease.",
+            "fr-FR": "Intégrez Paystack à Shopware 6 pour accepter des paiements sécurisés par carte, virement et mobile money. Développez votre activité en Afrique avec cette solution de paiement fiable."
+        },
+        "manufacturerLink": {
+            "de-DE": "https://kommandhub.com",
+            "en-GB": "https://kommandhub.com"
+        },
+        "supportLink": {
+            "de-DE": "https://kommandhub.com/support",
+            "en-GB": "https://kommandhub.com/support"
         }
     },
     "config": {
         "allow-plugins": {
+            "php-http/discovery": true,
             "symfony/runtime": true
-        }
-    }
+        },
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }

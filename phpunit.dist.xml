@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/12.0/phpunit.xsd"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
          colors="true"
          cacheDirectory=".phpunit.cache"
@@ -12,7 +12,7 @@
     <php>
         <!-- PCOV Configuration -->
         <ini name="pcov.enabled" value="1"/>
-        <ini name="pcov.directory" value="src"/>
+        <ini name="pcov.directory" value="."/>
         <ini name="pcov.exclude" value="tests,vendor,Migration,Resources"/>
 
         <!-- Memory and error settings -->
@@ -44,6 +44,12 @@
             <directory>src/Entity</directory>
             <directory>tests</directory>
             <directory>vendor</directory>
+            <!-- Plugin bootstrap: lifecycle glue (DI container access, install/
+                 update/activate hooks) that can only be exercised with a booted
+                 Shopware kernel. Covered by the @group kernel integration tests
+                 in the full suite; excluded here so the no-kernel CI coverage
+                 gate reflects code it can actually run. -->
+            <file>src/KommandhubPaystackSW.php</file>
         </exclude>
     </source>
 

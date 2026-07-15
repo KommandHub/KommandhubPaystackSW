@@ -3,8 +3,9 @@
         xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/shopware/6.7/src/Core/System/SystemConfig/Schema/config.xsd">
 
     <card>
-        <title>Live Configuration</title>
-        <title lang="de-DE">Live-Konfiguration</title>
+        <title>Credentials</title>
+        <title lang="de-DE">Zugangsdaten</title>
+        <title lang="fr-FR">Identifiants</title>
 
         <input-field type="password">
             <name>apiSecretKey</name>
@@ -18,11 +19,6 @@
             </helpText>
             <copyable>true</copyable>
         </input-field>
-    </card>
-
-    <card>
-        <title>Sandbox / Test Configuration</title>
-        <title lang="de-DE">Sandbox- / Testkonfiguration</title>
 
         <input-field type="bool">
             <name>enableSandbox</name>
@@ -51,6 +47,240 @@
     </card>
 
     <card>
+        <title>Split payment</title>
+        <title lang="de-DE">Splitte Zahlung</title>
+        <title lang="fr-FR">Paiement divisé</title>
+
+        <input-field type="bool">
+            <name>enableSplitPayment</name>
+            <label>Enable Split Payment</label>
+            <label lang="de-DE">Split-Zahlung aktivieren</label>
+            <label lang="fr-FR">Activer le paiement divisé</label>
+            <defaultValue>false</defaultValue>
+            <helpText>
+                Enable this to split payments between your main account and a subaccount.
+            </helpText>
+            <helpText lang="de-DE">
+                Aktivieren Sie dies, um Zahlungen zwischen Ihrem Hauptkonto und einem Unterkonto aufzuteilen.
+            </helpText>
+            <helpText lang="fr-FR">
+                Activez cette option pour diviser les paiements entre votre compte principal et un sous-compte.
+            </helpText>
+        </input-field>
+
+        <input-field type="text">
+            <name>subaccountCode</name>
+            <label>Subaccount Code</label>
+            <label lang="de-DE">Unterkonto-Code</label>
+            <label lang="fr-FR">Code du sous-compte</label>
+            <helpText>
+                The code for the subaccount that should receive a split of the payment (e.g., ACCT_xxxxxxxxx).
+            </helpText>
+            <helpText lang="de-DE">
+                Der Code für das Unterkonto, das einen Teil der Zahlung erhalten soll (z. B. ACCT_xxxxxxxxx).
+            </helpText>
+            <helpText lang="fr-FR">
+                Le code du sous-compte qui doit recevoir une partie du paiement (ex: ACCT_xxxxxxxxx).
+            </helpText>
+        </input-field>
+
+        <input-field type="text">
+            <name>splitCode</name>
+            <label>Split Code</label>
+            <label lang="de-DE">Split-Code</label>
+            <label lang="fr-FR">Code de répartition</label>
+            <helpText>
+                The code for the split group that should receive a split of the payment (e.g., SPL_xxxxxxxxx). If both Subaccount Code and Split Code are provided, Split Code will take precedence.
+            </helpText>
+            <helpText lang="de-DE">
+                Der Code für die Split-Gruppe, die eine Aufteilung der Zahlung erhalten soll (z. B. SPL_xxxxxxxxx). Wenn sowohl der Unterkonto-Code als auch der Split-Code angegeben sind, hat der Split-Code Vorrang.
+            </helpText>
+            <helpText lang="fr-FR">
+                Le code du groupe de répartition qui doit recevoir une partie du paiement (ex: SPL_xxxxxxxxx). Si le code du sous-compte et le code de répartition sont tous deux fournis, le code de répartition sera prioritaire.
+            </helpText>
+        </input-field>
+
+        <input-field type="int">
+            <name>splitPaymentTransactionCharge</name>
+            <label>Split Payment Transaction Charge</label>
+            <label lang="de-DE">Transaktionsgebühr für Split-Zahlung</label>
+            <label lang="fr-FR">Frais de transaction de paiement divisé</label>
+            <helpText>
+                A flat fee to charge the subaccount for this transaction, in Naira (₦). This overrides the split percentage set when the subaccount was created. Ideally, you will need to use this if you are splitting in flat rates (since subaccount creation only allows for percentage split). e.g. 100 for a ₦100 flat fee.
+            </helpText>
+            <helpText lang="de-DE">
+                Eine Pauschalgebühr, die dem Unterkonto für diese Transaktion in Naira (₦) berechnet wird. Dies überschreibt den bei der Erstellung des Unterkontos festgelegten Split-Prozentsatz. Idealerweise verwenden Sie dies, wenn Sie mit Pauschalbeträgen aufteilen (da die Erstellung von Unterkonten nur eine prozentuale Aufteilung zulässt). z.B. 100 für eine Pauschalgebühr von ₦100.
+            </helpText>
+            <helpText lang="fr-FR">
+                Des frais fixes à facturer au sous-compte pour cette transaction, en Naira (₦). Cela remplace le pourcentage de répartition défini lors de la création du sous-compte. Idéalement, vous devrez l'utiliser si vous effectuez une répartition à taux fixe (car la création de sous-compte ne permet qu'une répartition en pourcentage). par exemple 100 pour des frais fixes de ₦100.
+            </helpText>
+        </input-field>
+
+        <input-field type="single-select">
+            <name>paystackChargesBearer</name>
+            <options>
+                <option>
+                    <id>account</id>
+                    <name>Account (Merchant)</name>
+                    <name lang="de-DE">Konto (Händler)</name>
+                    <name lang="fr-FR">Compte (Marchand)</name>
+                </option>
+                <option>
+                    <id>subaccount</id>
+                    <name>Subaccount</name>
+                    <name lang="de-DE">Unterkonto</name>
+                    <name lang="fr-FR">Sous-compte</name>
+                </option>
+            </options>
+            <label>Paystack Charges Bearer</label>
+            <label lang="de-DE">Paystack-Gebührenträger</label>
+            <label lang="fr-FR">Porteur de frais Paystack</label>
+            <helpText>
+                Choose who bears the Paystack transaction charges.
+            </helpText>
+            <helpText lang="de-DE">
+                Wählen Sie aus, wer die Paystack-Transaktionsgebühren trägt.
+            </helpText>
+            <helpText lang="fr-FR">
+                Choisissez qui supporte les frais de transaction Paystack.
+            </helpText>
+        </input-field>
+    </card>
+
+    <card>
+        <title>Meta Information</title>
+        <title lang="de-DE">Metainformationen</title>
+        <title lang="fr-FR">Informations méta</title>
+
+        <input-field type="multi-select">
+            <name>metaData</name>
+            <options>
+                <option>
+                    <id>orderId</id>
+                    <name>Order ID</name>
+                    <name lang="de-DE">Bestell-ID</name>
+                    <name lang="fr-FR">ID de commande</name>
+                </option>
+                <option>
+                    <id>customerName</id>
+                    <name>Customer Name</name>
+                    <name lang="de-DE">Kundenname</name>
+                    <name lang="fr-FR">Nom du client</name>
+                </option>
+                <option>
+                    <id>customerEmail</id>
+                    <name>Customer Email</name>
+                    <name lang="de-DE">E-Mail-Adresse des Kunden</name>
+                    <name lang="fr-FR">E-mail du client</name>
+                </option>
+                <option>
+                    <id>customerPhone</id>
+                    <name>Customer Phone</name>
+                    <name lang="de-DE">Telefonnummer des Kunden</name>
+                    <name lang="fr-FR">Téléphone du client</name>
+                </option>
+                <option>
+                    <id>billingAddress</id>
+                    <name>Order Billing Address</name>
+                    <name lang="de-DE">Rechnungsadresse der Bestellung</name>
+                    <name lang="fr-FR">Adresse de facturation de la commande</name>
+                </option>
+                <option>
+                    <id>shippingAddress</id>
+                    <name>Order Shipping Address</name>
+                    <name lang="de-DE">Lieferadresse der Bestellung</name>
+                    <name lang="fr-FR">Adresse de livraison de la commande</name>
+                </option>
+                <option>
+                    <id>products</id>
+                    <name>Product(s) Purchased</name>
+                    <name lang="de-DE">Gekaufte Produkte</name>
+                    <name lang="fr-FR">Produit(s) acheté(s)</name>
+                </option>
+            </options>
+            <label>Metadata to Send</label>
+            <label lang="de-DE">Zu sendende Metadaten</label>
+            <label lang="fr-FR">Métadonnées à envoyer</label>
+            <helpText>
+                Select which additional order information should be sent to Paystack as metadata. This can help with transaction tracking and reconciliation in your Paystack dashboard.
+            </helpText>
+            <helpText lang="de-DE">
+                Wählen Sie aus, welche zusätzlichen Bestellinformationen als Metadaten an Paystack gesendet werden sollen. Dies kann bei der Transaktionsverfolgung und -abstimmung in Ihrem Paystack-Dashboard helfen.
+            </helpText>
+            <helpText lang="fr-FR">
+                Sélectionnez les informations supplémentaires sur la commande qui doivent être envoyées à Paystack en tant que métadonnées. Cela peut aider à la surveillance et à la réconciliation des transactions dans votre tableau de bord Paystack.
+            </helpText>
+        </input-field>
+    </card>
+
+    <card>
+        <title>Bank Data Collection</title>
+        <title lang="de-DE">Bankdatenerfassung</title>
+
+        <input-field type="bool">
+            <name>collectBankData</name>
+            <label>Enable Bank Data Collection</label>
+            <label lang="de-DE">Bankdatenerfassung aktivieren</label>
+            <defaultValue>false</defaultValue>
+            <helpText>
+                Enable or disable the collection of bank account details from customers.
+            </helpText>
+            <helpText lang="de-DE">
+                Aktivieren oder deaktivieren Sie die Erfassung von Bankverbindungen von Kunden.
+            </helpText>
+        </input-field>
+
+        <input-field type="bool">
+            <name>showBvnField</name>
+            <label>Show BVN Field</label>
+            <label lang="de-DE">BVN-Feld anzeigen</label>
+            <defaultValue>false</defaultValue>
+            <helpText>
+                Toggle visibility of the BVN (Bank Verification Number) field in the bank data form.
+            </helpText>
+            <helpText lang="de-DE">
+                Schalten Sie die Sichtbarkeit des BVN-Feldes (Bank Verification Number) im Bankdatenformular um.
+            </helpText>
+        </input-field>
+
+        <input-field type="bool">
+            <name>requireBvn</name>
+            <label>Require BVN</label>
+            <label lang="de-DE">BVN erforderlich</label>
+            <defaultValue>false</defaultValue>
+            <helpText>
+                If enabled, the BVN field will be mandatory for form submission.
+            </helpText>
+            <helpText lang="de-DE">
+                Wenn aktiviert, ist das BVN-Feld für die Formularübermittlung obligatorisch.
+            </helpText>
+        </input-field>
+    </card>
+
+    <card>
+        <title>Refund Settings</title>
+        <title lang="de-DE">Erstattungseinstellungen</title>
+
+        <input-field type="bool">
+            <name>refundEnabled</name>
+            <label>Enable Refunds</label>
+            <label lang="de-DE">Erstattungen aktivieren</label>
+            <defaultValue>true</defaultValue>
+            <helpText>Enable or disable the Paystack refund feature.</helpText>
+            <helpText lang="de-DE">Aktivieren oder deaktivieren Sie die Paystack-Erstattungsfunktion.</helpText>
+        </input-field>
+
+        <input-field type="int">
+            <name>minimumRefundAmount</name>
+            <label>Minimum Refund Amount</label>
+            <label lang="de-DE">Mindesterstattungsbetrag</label>
+            <defaultValue>50</defaultValue>
+            <helpText>The minimum amount allowed for a refund in minor units (e.g., 50 for 0.50 NGN). Paystack requires a minimum of 50.</helpText>
+            <helpText lang="de-DE">Der zulässige Mindestbetrag für eine Erstattung in kleineren Einheiten (z. B. 50 für 0,50 NGN). Paystack erfordert mindestens 50.</helpText>
+        </input-field>
+    </card>
+
+    <card>
         <title>Debugging</title>
         <title lang="de-DE">Fehlerdiagnose</title>
 
@@ -65,6 +295,56 @@
             <helpText lang="de-DE">
                 Protokolliert detaillierte Informationen zu Zahlungsereignissen zur Fehlerdiagnose. Im Produktivbetrieb deaktivieren, um sensible Daten zu schützen.
             </helpText>
+        </input-field>
+
+        <input-field type="multi-select">
+            <name>logLevels</name>
+            <options>
+                <option>
+                    <id>debug</id>
+                    <name>Debug</name>
+                    <name lang="de-DE">Debug</name>
+                </option>
+                <option>
+                    <id>info</id>
+                    <name>Info</name>
+                    <name lang="de-DE">Info</name>
+                </option>
+                <option>
+                    <id>notice</id>
+                    <name>Notice</name>
+                    <name lang="de-DE">Hinweis</name>
+                </option>
+                <option>
+                    <id>warning</id>
+                    <name>Warning</name>
+                    <name lang="de-DE">Warnung</name>
+                </option>
+                <option>
+                    <id>error</id>
+                    <name>Error</name>
+                    <name lang="de-DE">Fehler</name>
+                </option>
+                <option>
+                    <id>critical</id>
+                    <name>Critical</name>
+                    <name lang="de-DE">Kritisch</name>
+                </option>
+                <option>
+                    <id>alert</id>
+                    <name>Alert</name>
+                    <name lang="de-DE">Alarm</name>
+                </option>
+                <option>
+                    <id>emergency</id>
+                    <name>Emergency</name>
+                    <name lang="de-DE">Notfall</name>
+                </option>
+            </options>
+            <label>Log levels to log</label>
+            <label lang="de-DE">Zu protokollierende Log-Level</label>
+            <helpText>Select which log levels should be recorded when detailed logging is enabled.</helpText>
+            <helpText lang="de-DE">Wählen Sie aus, welche Log-Level aufgezeichnet werden sollen, wenn die detaillierte Protokollierung aktiviert ist.</helpText>
         </input-field>
     </card>
 </config>

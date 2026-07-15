@@ -1,0 +1,59 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Kommandhub\PaystackSW\Tests\Unit\Checkout\Payment\Service;
+
+use Kommandhub\PaystackSW\Client\PaystackClient;
+use Kommandhub\PaystackSW\Client\Resource\Transaction;
+use Kommandhub\PaystackSW\Checkout\Payment\Service\TransactionService;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
+
+#[CoversClass(TransactionService::class)]
+class TransactionServiceTest extends TestCase
+{
+    private PaystackClient $paystack;
+    private TransactionService $transactionService;
+    private Transaction $transactionResource;
+
+    protected function setUp(): void
+    {
+        $this->paystack = $this->createMock(PaystackClient::class);
+        $this->transactionResource = $this->createMock(Transaction::class);
+
+        $this->paystack->method('transactions')->willReturn($this->transactionResource);
+
+        $this->transactionService = new TransactionService($this->paystack);
+    }
+
+    public function testInitialize(): void
+    {
+        $payload = ['amount' => 10000];
+        $expectedResponse = ['status' => true, 'data' => ['authorization_url' => 'https://paystack.com/checkout']];
+
+        $this->transactionResource->expects($this->once())
+            ->method('initialize')
+            ->with($payload)
+            ->willReturn($expectedResponse);
+
+        $response = $this->transactionService->initialize($payload);
+
+        $this->assertEquals($expectedResponse, $response);
+    }
+
+    public function testVerify(): void
+    {
+        $reference = 'test_reference';
+        $expectedResponse = ['status' => true, 'data' => ['status' => 'success']];
+
+        $this->transactionResource->expects($this->once())
+            ->method('verify')
+            ->with($reference)
+            ->willReturn($expectedResponse);
+
+        $response = $this->transactionService->verify($reference);
+
+        $this->assertEquals($expectedResponse, $response);
+    }
+}

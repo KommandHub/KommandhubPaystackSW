@@ -6,28 +6,46 @@ services:
 
   Kommandhub\PaystackSW\:
     resource: '../../*'
-    exclude: '../../{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
+    exclude: '../../{DependencyInjection,Entity,Migrations,Tests,Kernel.php,DataAbstractionLayer/OrderTransaction/Abstract*}'
 
-  Kommandhub\PaystackSW\Service\OrderTransactionService:
-    arguments:
-      $orderTransactionRepository: '@order_transaction.repository'
+  Kommandhub\PaystackSW\Checkout\Payment\Service\TransactionVerificationProcessorInterface:
+    alias: Kommandhub\PaystackSW\Checkout\Payment\Service\TransactionVerificationProcessor
 
-  Kommandhub\PaystackSW\Checkout\Payment\PaystackPaymentHandler:
-    arguments:
-      $orderTransactionService: '@Kommandhub\PaystackSW\Service\OrderTransactionService'
-      $transactionService: '@Kommandhub\PaystackSW\Service\TransactionService'
-      $payloadBuilder: '@Kommandhub\PaystackSW\Service\PayloadBuilder'
+  Kommandhub\PaystackSW\Checkout\Payment\Service\TransactionMetadataProcessorInterface:
+    alias: Kommandhub\PaystackSW\Checkout\Payment\Service\TransactionMetadataProcessor
+
+  Kommandhub\PaystackSW\Client\Http\HttpClientInterface:
+    alias: Kommandhub\PaystackSW\Client\Http\PaystackHttpClient
+
+  Kommandhub\PaystackSW\Checkout\Payment\Handler\PaystackPaymentHandler:
     tags:
       - { name: 'shopware.payment_handler' }
 
-  Kommandhub\PaystackSW\Service\PaystackFactory:
+  Kommandhub\PaystackSW\Administration\Controller\RefundController:
     arguments:
-      $config: '@Kommandhub\PaystackSW\Service\Config'
-      $client: '@GuzzleHttp\Client'
-      $requestFactory: '@Nyholm\Psr7\Factory\Psr17Factory'
-      $streamFactory: '@Nyholm\Psr7\Factory\Psr17Factory'
+      $paystack: '@Kommandhub\PaystackSW\Client\PaystackClient'
+      $config: '@Kommandhub\PaystackSW\Setting\Service\Config'
+    tags:
+      - { name: 'container.service', method: 'setContainer' }
+    calls:
+      - [setContainer, ['@service_container']]
+    public: true
 
-  GuzzleHttp\Client: ~
+  Kommandhub\PaystackSW\Webhook\Controller\WebhookController:
+    public: true
+    calls:
+      - [ setContainer, [ '@service_container' ] ]
+    tags: [ ]
 
-  Kommandhub\Paystack\Paystack:
-    factory: ['@Kommandhub\PaystackSW\Service\PaystackFactory', 'create']
+  Kommandhub\PaystackSW\Webhook\Subscriber\WebhookSubscriber:
+    arguments:
+      $orderTransactionCaptureRefundRepository: '@order_transaction_capture_refund.repository'
+
+  Kommandhub\PaystackSW\Logging\ConfigurableLogger:
+    arguments:
+      $logger: '@monolog.logger.paystack_channel'
+    tags:
+      - { name: 'monolog.logger', channel: 'paystack_channel' }
+
+  Psr\Log\LoggerInterface:
+    alias: Kommandhub\PaystackSW\Logging\ConfigurableLogger

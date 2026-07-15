@@ -1,154 +1,134 @@
-.SILENT:
-.PHONY: help up up-quick down build wait-for-container prepare test test-coverage cs cs-fix analyse shell logs status restart clean clean-all info
+.PHONY: help up down build restart shell plugin-list test test-coverage cs cs-fix analyse fixture-load resync prepare
 
-## Color
-COLOR_RESET=\033[0m
-COLOR_INFO=\033[32m
-COLOR_COMMENT=\033[33m
+CONTAINER := shopware
+PLUGIN_DIR := custom/static-plugins/KommandhubPaystackSW
 
-# Configuration Variable
-CONTAINER_NAME ?= kommandhub-paystack-shopware
-PLUGIN_NAME ?= KommandhubPaystackSW
-PLUGIN_REL_PATH := custom/plugins/$(PLUGIN_NAME)
+# Plugins installed via composer
+STATIC_PLUGINS := \
+	kommandhub/foundation-sw:KommandhubFoundationSW \
+	kommandhub/paystack-sw:KommandhubPaystackSW
 
-# Determine the absolute path to the plugin directory
-PLUGIN_ABS_PATH := $(shell cd $(dir $(lastword $(MAKEFILE_LIST))) && pwd)
-PROJECT_ROOT := $(shell cd $(PLUGIN_ABS_PATH)/../../.. && pwd)
+# Only plugins that should be copied into custom/static-plugins
+STATIC_COPY_PLUGINS := \
+	kommandhub/foundation-sw:KommandhubFoundationSW
 
-# Detect if we're running inside Docker container
-IS_DOCKER := $(shell test -f /.dockerenv && echo true || echo false)
-DOCKER_RUN := $(if $(filter true,$(IS_DOCKER)),,docker exec $(CONTAINER_NAME))
+# Composer install list (includes all)
+COMPOSER_PLUGINS := $(foreach p,$(STATIC_PLUGINS),$(word 1,$(subst :, ,$(p))))
 
-# Path inside container (assuming standard Shopware layout)
-CONTAINER_PLUGIN_DIR := /var/www/html/$(PLUGIN_REL_PATH)
+define CHECK_READY
+@if [ -z "$$(docker compose ps $(CONTAINER) --status running --quiet)" ]; then \
+	echo "Error: Container '$(CONTAINER)' is not running. Please run 'make up' first."; \
+	exit 1; \
+fi; \
+HEALTH=$$(docker compose ps $(CONTAINER) --format '{{.Health}}'); \
+if [ "$$HEALTH" != "healthy" ] && [ -n "$$HEALTH" ]; then \
+	echo "Waiting for container '$(CONTAINER)' to be healthy..."; \
+	while [ "$$(docker compose ps $(CONTAINER) --format '{{.Health}}')" != "healthy" ]; do \
+		printf "."; \
+		sleep 1; \
+	done; \
+	echo " Ready!"; \
+fi
+endef
+
+define EXEC
+docker compose exec $(CONTAINER) bash -c "$(1)"
+endef
+
+define EXEC_IN_PLUGIN
+$(call EXEC,cd $(PLUGIN_DIR) && $(1))
+endef
 
 help:
 	@echo "Available commands:"
-	@echo "  make up           - Start containers and install tools"
-	@echo "  make up-quick     - Start containers only"
-	@echo "  make down         - Stop containers"
-	@echo "  make build        - Rebuild containers"
-	@echo "  make prepare      - Prepare test environment"
-	@echo "  make test         - Run PHPUnit tests"
-	@echo "  make test-coverage- Run tests with coverage"
-	@echo "  make cs           - Run code style checks"
-	@echo "  make cs-fix       - Fix code style issues"
-	@echo "  make analyse      - Run PHPStan analysis"
-	@echo "  make shell        - Open shell in container"
-	@echo "  make clean        - Clean build artifacts"
-	@echo "  make clean-all    - Clean everything"
-	@echo ""
-	@echo "Configuration:"
-	@echo "  CONTAINER_NAME=$(CONTAINER_NAME)"
-	@echo "  PLUGIN_NAME=$(PLUGIN_NAME)"
-	@echo "  PLUGIN_ABS_PATH=$(PLUGIN_ABS_PATH)"
-	@echo "  Running in container: $(IS_DOCKER)"
+	@echo "  up                - Start the shopware container"
+	@echo "  down              - Stop the shopware container"
+	@echo "  build             - Rebuild the shopware container"
+	@echo "  restart           - Restart the environment"
+	@echo "  shell             - Open a shell session in the shopware container"
+	@echo "  plugin-list       - List all plugins"
+	@echo "  test              - Run phpunit tests"
+	@echo "  test-coverage     - Run phpunit tests with coverage report"
+	@echo "  cs                - Run php-cs-fixer checks"
+	@echo "  cs-fix            - Run php-cs-fixer fix"
+	@echo "  analyse           - Run phpstan analysis"
+	@echo "  fixture-load      - Load fixtures"
+	@echo "  resync            - Sync config directory into the root project"
+	@echo "  prepare           - Full project preparation"
 
-up: up-quick wait-for-container
-	@echo "✅ Container $(CONTAINER_NAME) is ready!"
-
-up-quick:
-	@echo "Starting Docker container $(CONTAINER_NAME)..."
-	docker-compose up -d --build
-
-wait-for-container:
-	@echo "Waiting for container $(CONTAINER_NAME) to be ready..."
-	@for i in 1 2 3 4 5; do \
-		if docker ps --filter name=$(CONTAINER_NAME) --filter status=running | grep -q $(CONTAINER_NAME); then \
-			echo "Container $(CONTAINER_NAME) is running!"; \
-			break; \
-		fi; \
-		echo "Waiting... (attempt $$i)"; \
-		sleep 5; \
-		if [ $$i -eq 5 ]; then \
-			echo "❌ Container $(CONTAINER_NAME) failed to start"; \
-			exit 1; \
-		fi; \
-	done
+up:
+	docker compose up -d --build
+	$(MAKE) prepare
 
 down:
-	docker-compose down
+	docker compose down -v
 
 build:
-	docker-compose build
-
-prepare:
-	@echo "Preparing test environment..."
-	rm -rf vendor/
-	composer require --dev shopware/dev-tools --no-interaction --optimize-autoloader
-	cd $(PLUGIN_DIR)
-	rm -rf vendor/
-	composer install --no-interaction --optimize-autoloader
-	cd -
-	rsync -rq /var/www/html/$(PLUGIN_DIR)/tests/Setup/config config/
-	@echo "✅ Test environment is ready!"
-
-test:
-	@echo "Running PHPUnit tests..."
-	$(DOCKER_RUN) bash -c "cd $(CONTAINER_PLUGIN_DIR) && PROJECT_ROOT=/var/www/html ./vendor/bin/phpunit \
-		--testdox \
-		--configuration=. \
-		--colors=always \
-		${FILTER}"
-
-test-coverage:
-	@echo "Running tests with coverage..."
-	$(DOCKER_RUN) bash -c "cd $(CONTAINER_PLUGIN_DIR) && PROJECT_ROOT=/var/www/html ./vendor/bin/phpunit --testdox \
-		--coverage-html build/coverage \
-		--coverage-text \
-		--configuration=. \
-		--coverage-clover build/logs/clover.xml \
-		--coverage-cobertura build/logs/cobertura.xml \
-		--colors=always \
-		${FILTER}"
-
-cs:
-	@echo "Running code style checks..."
-	$(DOCKER_RUN) bash -c "cd $(CONTAINER_PLUGIN_DIR) && PROJECT_ROOT=/var/www/html ./vendor/bin/php-cs-fixer fix --dry-run --diff"
-
-cs-fix:
-	@echo "Fixing code style issues..."
-	$(DOCKER_RUN) bash -c "cd $(CONTAINER_PLUGIN_DIR) && PROJECT_ROOT=/var/www/html ./vendor/bin/php-cs-fixer fix"
-
-analyse:
-	@echo "Running PHPStan analysis..."
-	$(DOCKER_RUN) bash -c "cd $(CONTAINER_PLUGIN_DIR) && PROJECT_ROOT=/var/www/html ./vendor/bin/phpstan analyse src -c phpstan.dist.neon --memory-limit=1G"
-
-shell:
-	@if [ "$(IS_DOCKER)" = "true" ]; then \
-		echo "Already in container. Starting bash..."; \
-		bash; \
-	else \
-		echo "Opening shell in container $(CONTAINER_NAME)..."; \
-		docker exec -it $(CONTAINER_NAME) bash; \
-	fi
-
-logs:
-	docker-compose logs -f
-
-status:
-	docker-compose ps
+	docker compose build
 
 restart: down up
 
-clean:
-	@echo "Cleaning build artifacts..."
-	@if [ "$(IS_DOCKER)" = "true" ]; then \
-		rm -rf build/ vendor/ composer.lock; \
-	else \
-		docker exec $(CONTAINER_NAME) bash -c "cd $(CONTAINER_PLUGIN_DIR) && rm -rf build/ vendor/ composer.lock"; \
-	fi
+shell:
+	$(CHECK_READY)
+	docker compose exec $(CONTAINER) bash
 
-clean-all: down
-	@echo "Cleaning everything..."
-	docker-compose down -v
-	rm -rf build/ vendor/ composer.lock
+plugin-list:
+	$(CHECK_READY)
+	docker compose exec $(CONTAINER) bin/console plugin:list
 
-info:
-	@echo "Current Configuration:"
-	@echo "  Container Name: $(CONTAINER_NAME)"
-	@echo "  Plugin Directory: $(PLUGIN_DIR)"
-	@echo "  Running in container: $(IS_DOCKER)"
+test:
+	$(CHECK_READY)
+	$(call EXEC_IN_PLUGIN,php ../../../bin/phpunit -c phpunit.dist.xml --testdox --display-deprecations \
+                                                                                   --display-warnings \
+                                                                                   --display-notices --color=always $${FILTER})
+
+test-coverage:
+	$(CHECK_READY)
+	$(call EXEC_IN_PLUGIN,php ../../../bin/phpunit -c phpunit.dist.xml --coverage-text --display-deprecations \
+																						  --display-warnings \
+																						  --display-notices --color=always)
+
+cs:
+	$(CHECK_READY)
+	$(call EXEC_IN_PLUGIN,./vendor/bin/php-cs-fixer fix --dry-run --diff)
+
+cs-fix:
+	$(CHECK_READY)
+	$(call EXEC_IN_PLUGIN,./vendor/bin/php-cs-fixer fix)
+
+analyse:
+	$(CHECK_READY)
+	$(call EXEC_IN_PLUGIN,./vendor/bin/phpstan analyse src -c phpstan.dist.neon --memory-limit=1G)
+
+fixture-load:
+	$(CHECK_READY)
+	docker compose exec $(CONTAINER) bin/console fixture:load --no-interaction
+
+resync:
+	@echo "Resyncing config directory..."
+	$(CHECK_READY)
+	docker compose exec $(CONTAINER) cp -R $(PLUGIN_DIR)/tests/Setup/config/. config/
+
+prepare:
 	@echo ""
-	@echo "Running containers:"
-	@docker ps --filter name=$(CONTAINER_NAME) 2>/dev/null || echo "Docker not available"
+	@echo "Preparing the project..."
+	$(CHECK_READY)
+	
+	docker compose exec $(CONTAINER) rm -rf custom/plugins/*
+
+	@echo "Installing required plugins via composer..."
+	docker compose exec $(CONTAINER) composer require $(COMPOSER_PLUGINS) --no-interaction
+
+	@echo "Copying vendor plugins to static-plugins (excluding main plugin)..."
+	@$(foreach plugin,$(STATIC_COPY_PLUGINS), \
+		VENDOR_DIR=$(word 1,$(subst :, ,$(plugin))); \
+		TARGET_DIR=$(word 2,$(subst :, ,$(plugin))); \
+		echo "  $$VENDOR_DIR -> $$TARGET_DIR"; \
+		docker compose exec $(CONTAINER) mkdir -p custom/static-plugins/$$TARGET_DIR; \
+		docker compose exec $(CONTAINER) cp -R vendor/$$VENDOR_DIR/. custom/static-plugins/$$TARGET_DIR/; \
+	)
+
+	@echo "Installing plugin dependencies..."
+	$(call EXEC_IN_PLUGIN,composer install --no-interaction)
+
+	# $(MAKE) resync

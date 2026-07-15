@@ -1,0 +1,122 @@
+{% sw_extends '@Storefront/storefront/page/account/profile/index.html.twig' %}
+
+{% block page_account_profile_personal %}
+    {{ parent() }}
+
+    {% block page_account_profile_bank_visibility %}
+        {% if config('KommandhubPaystackSW.config.collectBankData') %}
+            {% block page_account_profile_bank_card %}
+            <div class="card account-profile-bank mb-5">
+                <div class="card-body">
+                    {% block page_account_profile_bank_header %}
+                        <div class="card-title">
+                            {{ 'kommandhub-paystack.bankTitle'|trans|sw_sanitize }}
+                        </div>
+                    {% endblock %}
+
+                    {% block page_account_profile_bank_form %}
+                        {% set customFields = context.customer.customFields %}
+
+                        {% block page_account_profile_bank_form_container %}
+                            {% set paystackBankVerificationOptions = {
+                                banksUrl: path('frontend.paystack.bank.list'),
+                                verifyUrl: path('frontend.paystack.bank.verify'),
+                                initialBankCode: customFields.kommandhub_paystack_bank_code
+                            } %}
+
+                            <form id="profileBankForm"
+                                action="{{ path('frontend.paystack.bank.save') }}"
+                                method="post"
+                                data-form-handler="true"
+                                data-paystack-bank-verification="true"
+                                data-paystack-bank-verification-options="{{ paystackBankVerificationOptions|default({})|json_encode|escape('html_attr') }}">
+
+                                {% block page_account_profile_bank_form_fields %}
+                                <div class="row g-3">
+                                    {% block page_account_profile_bank_form_bank_name %}
+                                        <div class="form-group col-12">
+                                            <label class="form-label" for="bankName">
+                                                {{ 'kommandhub-paystack.bankNameLabel'|trans|sw_sanitize }}
+                                            </label>
+                                            <select class="form-select"
+                                                    id="bankName"
+                                                    name="bankName">
+                                                {% block page_account_profile_bank_form_bank_name_options %}
+                                                <option value="" disabled selected>
+                                                    {{ 'kommandhub-paystack.bankNamePlaceholder'|trans|sw_sanitize }}
+                                                </option>
+                                                {% endblock %}
+                                            </select>
+                                        </div>
+                                    {% endblock %}
+
+                                    {% block page_account_profile_bank_form_bvn %}
+                                        {% if config('KommandhubPaystackSW.config.showBvnField') %}
+                                            <div class="form-group col-12">
+                                                <label class="form-label" for="bvn">
+                                                    {{ 'kommandhub-paystack.bvnLabel'|trans|sw_sanitize }}
+                                                </label>
+                                                <input type="text"
+                                                    class="form-control"
+                                                    id="bvn"
+                                                    name="bvn"
+                                                    value="{{ customFields.kommandhub_paystack_bvn }}"
+                                                    placeholder="{{ 'kommandhub-paystack.bvnPlaceholder'|trans|sw_sanitize }}"
+                                                    {% if config('KommandhubPaystackSW.config.requireBvn') %}required{% endif %}>
+                                                <div class="invalid-feedback"></div>
+                                                <div class="valid-feedback"></div>
+                                            </div>
+                                        {% endif %}
+                                    {% endblock %}
+
+                                    {% block page_account_profile_bank_form_account_number %}
+                                        <div class="form-group col-md-6">
+                                            <label class="form-label" for="accountNumber">
+                                                {{ 'kommandhub-paystack.accountNumberLabel'|trans|sw_sanitize }}
+                                            </label>
+                                            <input type="text"
+                                                class="form-control"
+                                                id="accountNumber"
+                                                name="accountNumber"
+                                                value="{{ customFields.kommandhub_paystack_account_number }}"
+                                                placeholder="{{ 'kommandhub-paystack.accountNumberPlaceholder'|trans|sw_sanitize }}"
+                                                required>
+                                            <div class="invalid-feedback"></div>
+                                            <div class="valid-feedback"></div>
+                                        </div>
+                                    {% endblock %}
+
+                                    {% block page_account_profile_bank_form_account_name %}
+                                        <div class="form-group col-md-6">
+                                            <label class="form-label" for="accountName">
+                                                {{ 'kommandhub-paystack.accountNameLabel'|trans|sw_sanitize }}
+                                            </label>
+                                            <input type="text"
+                                                class="form-control"
+                                                id="accountName"
+                                                name="accountName"
+                                                value="{{ customFields.kommandhub_paystack_account_name }}"
+                                                placeholder="{{ 'kommandhub-paystack.accountNamePlaceholder'|trans|sw_sanitize }}"
+                                                readonly>
+                                        </div>
+                                    {% endblock %}
+                                </div>
+                                {% endblock %}
+
+                                {% block page_account_profile_bank_form_actions %}
+                                    <div class="form-actions mt-3">
+                                        <button type="submit"
+                                                class="btn btn-light btn-sm">
+                                            {{ 'kommandhub-paystack.saveButton'|trans|sw_sanitize }}
+                                        </button>
+                                    </div>
+                                {% endblock %}
+                            </form>
+                        {% endblock %}
+                    {% endblock %}
+                </div>
+            </div>
+            {% endblock %}
+        {% endif %}
+    {% endblock %}
+{% endblock %}

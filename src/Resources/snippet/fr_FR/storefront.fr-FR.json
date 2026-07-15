@@ -1,0 +1,20 @@
+{
+  "kommandhub-paystack": {
+    "bankTitle": "Détails du compte bancaire",
+    "bankNameLabel": "Nom de la banque",
+    "bankNamePlaceholder": "Sélectionnez votre banque",
+    "accountNumberLabel": "Numéro de compte",
+    "accountNumberPlaceholder": "Entrez votre numéro de compte",
+    "accountNameLabel": "Nom du titulaire",
+    "accountNamePlaceholder": "Le nom du compte sera rempli automatiquement",
+    "bvnLabel": "BVN (Numéro de vérification bancaire)",
+    "bvnPlaceholder": "Entrez votre BVN",
+    "saveButton": "Enregistrer les coordonnées bancaires"
+  },
+  "checkout": {
+    "paystack-configuration-error": "Paystack n'est pas configuré correctement. Veuillez contacter le propriétaire de la boutique."
+  },
+  "error": {
+    "paystack-configuration-error": "Paystack n'est pas configuré correctement. Veuillez contacter le propriétaire de la boutique."
+  }
+}

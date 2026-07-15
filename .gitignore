@@ -45,3 +45,9 @@ Thumbs.db
 *.log
 *.tmp
 *.cache
+
+# Claude Code (local, machine-specific)
+# CLAUDE.md is intentionally tracked: it documents contributor conventions.
+# A shared .claude/settings.json may also be committed if the team wants one.
+/.claude/settings.local.json
+/.claude/launch.json

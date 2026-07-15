@@ -6,11 +6,48 @@
       "paymentChannel": "Payment Channel"
     },
     "grid": {
-      "reference": "Paystack Reference",
-      "transactionId": "Paystack Transaction ID",
+      "reference": "Reference",
+      "transactionId": "Transaction ID",
       "processingFee": "Processing Fee",
-      "verifiedAt": "Verified At"
+      "state": "Status",
+      "verifiedAt": "Verified At",
+      "refund": "Refund",
+      "captures": "Captures",
+      "refunds": "Refunds"
     },
+    "refund": {
+      "modalTitle": "Process Refund",
+      "listModalTitle": "Refunds",
+      "amountLabel": "Refund Amount",
+      "amountPlaceholder": "Enter amount to refund",
+      "amountHelpText": "The amount will be converted to the smallest currency unit (e.g. kobo).",
+      "currencyLabel": "Currency",
+      "customerNoteLabel": "Customer Note",
+      "customerNotePlaceholder": "Note from the merchant to the customer",
+      "merchantNoteLabel": "Merchant Note",
+      "merchantNotePlaceholder": "Note from the merchant to themselves",
+      "confirmButton": "Process Refund",
+      "errorAmountTooHigh": "The refund amount cannot exceed {maxAmount}.",
+      "errorAmountTooLow": "The refund amount must be at least {minAmount}."
+    },
+    "captures": {
+      "grid": {
+        "amount": "Amount",
+        "state": "Status",
+        "externalReference": "External Reference",
+        "createdAt": "Created At"
+      }
+    },
+    "refunds": {
+      "grid": {
+        "amount": "Amount",
+        "state": "Status",
+        "externalReference": "External Reference",
+        "reason": "Reason",
+        "createdAt": "Created At"
+      }
+    },
+    "header": "Paystack Transactions",
     "emptyState": {
       "title": "No Paystack Transaction Found",
       "subline": "This order was not processed via Paystack or the transaction details are unavailable."
@@ -19,6 +56,14 @@
   "sw-order": {
     "detail": {
       "tabPaystack": "Paystack"
+    }
+  },
+  "sw-privileges": {
+    "additional_permissions": {
+      "paystack": {
+        "label": "Paystack",
+        "refund": "Process Paystack refunds"
+      }
     }
   }
 }
