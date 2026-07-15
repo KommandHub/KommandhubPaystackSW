@@ -485,9 +485,11 @@ Integration tests are excluded from this job because they need a booted Shopware
 
 | Plugin | Shopware | PHP |
 | --- | --- | --- |
-| `1.0.x` | 6.6 and 6.7 | 8.2+ |
+| `0.9.0-beta.x` | 6.6 and 6.7 | 8.2+ |
 
 A single plugin release supports both Shopware 6.6 and 6.7 (`shopware/core: ~6.6.0 || ~6.7.0`).
+
+> **Pre-1.0 status:** the plugin is on a `0.x` version while it completes sandbox/staging validation (see [Roadmap](#roadmap)). Namespaces and the public API may still change before `1.0.0`. Once testing is complete and all critical issues are resolved, this will be promoted to `1.0.0` and submitted to the Shopware Store.
 
 ---
 

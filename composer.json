@@ -2,7 +2,7 @@
     "name": "kommandhub/paystack-sw",
     "description": "Integrate the Paystack payment gateway into Shopware 6 to accept secure payments via credit cards, bank transfers, and mobile money. Expand your business across Africa with ease.",
     "type": "shopware-platform-plugin",
-    "version": "1.0.0",
+    "version": "0.9.0-beta.1",
     "license": "MIT",
     "keywords": [
         "shopware",

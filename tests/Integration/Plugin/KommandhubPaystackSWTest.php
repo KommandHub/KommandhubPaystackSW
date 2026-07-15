@@ -86,9 +86,9 @@ class KommandhubPaystackSWTest extends TestCase
             $this->plugin,
             Context::createDefaultContext(),
             '6.7.0.0',
-            '1.0.0',
+            '0.9.0-beta.1',
             $this->createMock(MigrationCollection::class),
-            '1.0.1'
+            '0.9.0-beta.2'
         );
     }
 
@@ -121,7 +121,7 @@ class KommandhubPaystackSWTest extends TestCase
             $this->plugin,
             Context::createDefaultContext(),
             '6.7.0.0',
-            '1.0.0',
+            '0.9.0-beta.1',
             $this->createMock(MigrationCollection::class)
         );
     }
@@ -132,7 +132,7 @@ class KommandhubPaystackSWTest extends TestCase
             $this->plugin,
             Context::createDefaultContext(),
             '6.7.0.0',
-            '1.0.0',
+            '0.9.0-beta.1',
             $this->createMock(MigrationCollection::class)
         );
     }
@@ -143,7 +143,7 @@ class KommandhubPaystackSWTest extends TestCase
             $this->plugin,
             Context::createDefaultContext(),
             '6.7.0.0',
-            '1.0.0',
+            '0.9.0-beta.1',
             $this->createMock(MigrationCollection::class)
         );
     }
@@ -154,7 +154,7 @@ class KommandhubPaystackSWTest extends TestCase
             $this->plugin,
             Context::createDefaultContext(),
             '6.7.0.0',
-            '1.0.0',
+            '0.9.0-beta.1',
             $this->createMock(MigrationCollection::class),
             $keepUserData
         );

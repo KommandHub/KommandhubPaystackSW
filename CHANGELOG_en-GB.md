@@ -1,6 +1,8 @@
-# 1.0.0
+# 0.9.0-beta.1
 
-Initial release.
+Pre-release for internal development, QA and sandbox/staging testing. Not yet
+submitted to the Shopware Store. The public API and namespaces may still
+change before `1.0.0`.
 
 - Paystack payment for Shopware 6: card, bank transfer, USSD and mobile money.
 - Payment verification checks status, amount and currency before an order is marked paid.
