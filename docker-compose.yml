@@ -1,6 +1,11 @@
 services:
   shopware:
-    image: 'dockware/shopware:6.7.8.0'
+    # Built from the local Dockerfile: the stock dockware image plus shopware-cli,
+    # so the plugin can be validated from inside its own test environment.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: 'kommandhub-paystack-plugin:6.7.8.0'
     container_name: kommandhub-paystack-plugin
     environment:
       - 'XDEBUG_ENABLED=0'

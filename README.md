@@ -277,9 +277,16 @@ Default dockware credentials:
 
 ## Docker & Docker Compose
 
-The stack is defined in [`docker-compose.yml`](docker-compose.yml):
+The stack is defined in [`docker-compose.yml`](docker-compose.yml) and built from
+a small [`Dockerfile`](Dockerfile):
 
-- **Image**: `dockware/shopware:6.7.8.0`
+- **Base image**: `dockware/shopware:6.7.8.0`
+- **Added tooling**: [`shopware-cli`](https://sw-cli.fos.gg/) — the static binary
+  is copied from the upstream `shopware/shopware-cli:bin` image (latest stable,
+  ~50 MB, multi-arch), so no package manager or cleanup is involved. The build
+  runs `shopware-cli --version` so a broken install fails the image build rather
+  than the first `make validate-plugin`. Pin it for a reproducible build by
+  passing `--build-arg SHOPWARE_CLI_IMAGE=shopware/shopware-cli:bin@sha256:<digest>`.
 - **Container**: `kommandhub-paystack-plugin`
 - **PHP**: 8.3 (`XDEBUG_ENABLED` toggle available)
 - **Persistent volume**: `database` (MySQL data)
@@ -314,6 +321,12 @@ All targets run the underlying tools inside the running container.
 | `make fixture-load` | Load test fixtures |
 | `make resync` | Sync the test config into the shop root |
 | `make prepare` | Full project preparation (run by `make up`) |
+| `make validate-plugin` | Validate the plugin with `shopware-cli` (`--full --store-compliance`) |
+| `make cli` | Run any `shopware-cli` command: `make cli ARGS="extension get-version ."` |
+| `make changelog` | Render `CHANGELOG.md` as the Shopware Store would display it |
+| `make zip` | Build a distributable plugin zip into `build/` |
+
+`shopware-cli` ships inside the container image (see [Docker & Docker Compose](#docker--docker-compose)), so these run against the same PHP version and installed Shopware as the tests — not whatever is on the host. No local install is required.
 
 **Before committing, run:**
 
@@ -457,11 +470,17 @@ Logging goes through `Logging\ConfigurableLogger`, wired to the `paystack_channe
 4. Configure live secret keys and disable sandbox mode.
 5. Grant the **Paystack → Process Paystack refunds** permission to the roles that should be able to issue refunds (the built-in admin role already has all privileges).
 
-Validate a release build for the Shopware Store with:
+Validate a release build for the Shopware Store from inside the container, where
+`shopware-cli` runs against the installed Shopware and full vendor tree:
 
 ```bash
-shopware-cli extension validate . --full --store-compliance
+make validate-plugin
+# equivalently: make cli ARGS="extension validate . --full --store-compliance"
 ```
+
+Running the same command against a host-only `shopware-cli` reports false
+positives (see the PHPStan note under [Troubleshooting](#troubleshooting)) —
+the container has the dependencies it needs to resolve Shopware's classes.
 
 ---
 

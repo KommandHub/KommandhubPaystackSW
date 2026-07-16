@@ -1,4 +1,4 @@
-.PHONY: help up down build restart shell plugin-list test test-coverage cs cs-fix analyse fixture-load resync prepare
+.PHONY: help up down build restart shell plugin-list test test-coverage cs cs-fix analyse fixture-load resync prepare validate-plugin cli changelog zip
 
 CONTAINER := shopware
 PLUGIN_DIR := custom/static-plugins/KommandhubPaystackSW
@@ -81,6 +81,10 @@ help:
 	@echo "  fixture-load      - Load fixtures"
 	@echo "  resync            - Sync config directory into the root project"
 	@echo "  prepare           - Full project preparation"
+	@echo "  validate-plugin   - Validate the plugin with shopware-cli (store compliance)"
+	@echo "  cli               - Run any shopware-cli command: make cli ARGS=\"--version\""
+	@echo "  changelog         - Render the plugin changelog as the store would"
+	@echo "  zip               - Build a distributable plugin zip into build/"
 
 up:
 	docker compose up -d --build
@@ -125,6 +129,33 @@ cs-fix:
 analyse:
 	$(CHECK_READY)
 	$(call EXEC_IN_PLUGIN,./vendor/bin/phpstan analyse src -c phpstan.dist.neon --memory-limit=1G)
+
+# shopware-cli lives in the image (see Dockerfile), so these run against the same
+# PHP version and vendor tree as the tests — not whatever a developer has on their
+# host. Run `make build` after pulling a change to the Dockerfile.
+
+validate-plugin:
+	$(CHECK_READY)
+	$(call EXEC_IN_PLUGIN,shopware-cli extension validate . --full --store-compliance)
+
+# Escape hatch for the rest of the CLI, so a new target is not needed per command:
+#   make cli ARGS="extension get-version ."
+#   make cli ARGS="extension format ."
+cli:
+	$(CHECK_READY)
+	$(call EXEC_IN_PLUGIN,shopware-cli $(ARGS))
+
+changelog:
+	$(CHECK_READY)
+	$(call EXEC_IN_PLUGIN,shopware-cli extension get-changelog .)
+
+# --disable-git packages the working tree as it stands. Without it the CLI zips
+# from a git ref, which fails in this mounted checkout ("cannot find checkout tag
+# or branch") and would exclude uncommitted work anyway — the opposite of what a
+# test-container package is for.
+zip:
+	$(CHECK_READY)
+	$(call EXEC_IN_PLUGIN,shopware-cli extension zip . --release --disable-git --output-directory build)
 
 fixture-load:
 	$(CHECK_READY)

@@ -25,6 +25,11 @@ venv/
 /build/
 /out/
 
+# Compiled assets that `make zip` (shopware-cli extension zip) regenerates into
+# the source tree during its storefront/admin build. They are build output, not
+# source, and must not be committed from a dev checkout.
+/src/Storefront/Resources/public/
+
 # SQL dumps
 *.sql
 *.sqlite
