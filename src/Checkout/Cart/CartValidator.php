@@ -53,7 +53,7 @@ readonly class CartValidator implements CartValidatorInterface
             return;
         }
 
-        $this->logger->error('Paystack API secret key is not configured.', [
+        $this->logger->error('[Paystack] API secret key is not configured.', [
             'salesChannelId' => $salesChannelId,
             'isSandbox' => $isSandbox,
             'cartToken' => $cart->getToken(),

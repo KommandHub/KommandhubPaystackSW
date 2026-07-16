@@ -3,6 +3,17 @@ services:
     autowire: true
     autoconfigure: true
     public: false
+    # Give this plugin's services the ConfigurableLogger wherever they type-hint
+    # PSR-3, without touching the container-wide Psr\Log\LoggerInterface alias.
+    #
+    # Aliasing that globally rebinds LoggerInterface for *every* autowired
+    # consumer in the installation, including Shopware core and other plugins.
+    # Two plugins doing it means the last one compiled wins, so sibling plugins
+    # (this one and KommandhubFlutterwaveV3SW) would silently log through each
+    # other's logger and each other's debug toggle. A bind is scoped to the
+    # services defined in this file, so it cannot collide.
+    bind:
+      Psr\Log\LoggerInterface $logger: '@Kommandhub\PaystackSW\Logging\ConfigurableLogger'
 
   Kommandhub\PaystackSW\:
     resource: '../../*'
@@ -41,11 +52,10 @@ services:
     arguments:
       $orderTransactionCaptureRefundRepository: '@order_transaction_capture_refund.repository'
 
+  # The explicit $logger argument overrides the bind above, so the wrapper
+  # decorates the real monolog channel instead of recursing into itself.
   Kommandhub\PaystackSW\Logging\ConfigurableLogger:
     arguments:
       $logger: '@monolog.logger.paystack_channel'
     tags:
       - { name: 'monolog.logger', channel: 'paystack_channel' }
-
-  Psr\Log\LoggerInterface:
-    alias: Kommandhub\PaystackSW\Logging\ConfigurableLogger

@@ -60,7 +60,7 @@ class CartValidatorTest extends TestCase
 
         $this->logger->expects($this->once())
             ->method('error')
-            ->with('Paystack API secret key is not configured.', [
+            ->with('[Paystack] API secret key is not configured.', [
                 'salesChannelId' => 'channel-id',
                 'isSandbox' => false,
                 'cartToken' => 'cart-token',
@@ -89,7 +89,7 @@ class CartValidatorTest extends TestCase
 
         $this->logger->expects($this->once())
             ->method('error')
-            ->with('Paystack API secret key is not configured.', [
+            ->with('[Paystack] API secret key is not configured.', [
                 'salesChannelId' => 'channel-id',
                 'isSandbox' => true,
                 'cartToken' => 'cart-token',

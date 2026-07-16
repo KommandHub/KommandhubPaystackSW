@@ -99,7 +99,7 @@ class PaymentProcessorTest extends TestCase
 
         $this->logger->expects($this->once())
             ->method('error')
-            ->with('Failed to build Paystack payment payload.', $this->isType('array'));
+            ->with('[Paystack] Failed to build the payment payload.', $this->isType('array'));
 
         $this->expectException(PaymentException::class);
         $this->expectExceptionMessage('Unable to prepare payment payload: Build failed');
@@ -121,7 +121,7 @@ class PaymentProcessorTest extends TestCase
 
         $this->logger->expects($this->once())
             ->method('error')
-            ->with('Paystack communication error during initialization.', $this->isType('array'));
+            ->with('[Paystack] Communication error during initialization.', $this->isType('array'));
 
         $this->expectException(PaymentException::class);
         $this->expectExceptionMessage('A communication error occurred with the payment gateway');

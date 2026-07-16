@@ -12,8 +12,34 @@ STATIC_PLUGINS := \
 STATIC_COPY_PLUGINS := \
 	kommandhub/foundation-sw:KommandhubFoundationSW
 
-# Composer install list (includes all)
-COMPOSER_PLUGINS := $(foreach p,$(STATIC_PLUGINS),$(word 1,$(subst :, ,$(p))))
+# This plugin may ship at any stability (see "version" in composer.json), while
+# the Shopware install it is tested against pins minimum-stability to "stable".
+# Composer therefore refuses to resolve a pre-release unless the requirement
+# carries its own stability flag:
+#
+#   Could not find a version of package kommandhub/paystack-sw matching your
+#   minimum-stability (stable).
+#
+# Composer's ladder is: dev < alpha < beta < RC < stable. A flag accepts its own
+# level *and everything above it*, so "@dev" — the bottom rung — accepts every
+# stability there is. That makes this work unchanged for 0.9.0-alpha.1,
+# -beta.1, -RC1, a dev- branch, and 1.0.0 stable, with no edit per release.
+# ("@beta" would have covered beta/RC/stable but silently broken on an alpha.)
+#
+# This is a PER-PACKAGE flag: the root minimum-stability stays "stable", so no
+# other dependency can quietly resolve to a pre-release. That containment is why
+# this is preferred over relaxing minimum-stability globally.
+#
+# It is only permissive about *stability*, not about which package is chosen:
+# this plugin resolves from the custom/static-plugins path repository, which
+# offers exactly one candidate — the working tree being tested.
+PLUGIN_PACKAGE := kommandhub/paystack-sw
+PLUGIN_STABILITY := *@dev
+
+# Composer install list (includes all). The package under development is
+# requested with its stability flag; every other plugin is required as-is.
+COMPOSER_PLUGINS := $(patsubst $(PLUGIN_PACKAGE),'$(PLUGIN_PACKAGE):$(PLUGIN_STABILITY)',\
+	$(foreach p,$(STATIC_PLUGINS),$(word 1,$(subst :, ,$(p)))))
 
 define CHECK_READY
 @if [ -z "$$(docker compose ps $(CONTAINER) --status running --quiet)" ]; then \
@@ -115,6 +141,27 @@ prepare:
 	$(CHECK_READY)
 	
 	docker compose exec $(CONTAINER) rm -rf custom/plugins/*
+
+# Drop the copies a previous run left in custom/static-plugins, and the vendor
+# entries pointing at them, BEFORE composer resolves anything.
+#
+# The root composer.json registers custom/static-plugins/* as a path repository,
+# so a copy left there is a package in its own right and takes precedence over
+# Packagist. That makes prepare work exactly once per fresh container and fail on
+# every later run: composer symlinks vendor/<pkg> -> custom/static-plugins/<Plugin>,
+# and the copy step below then tries to copy a directory onto itself
+# ("are the same file").
+#
+# It also silently pins the version — once copied, "^1.0" resolves to whatever is
+# on disk rather than the latest release. Clearing first keeps Packagist
+# authoritative and makes this target idempotent.
+	@echo "Clearing previously copied vendor plugins..."
+	@$(foreach plugin,$(STATIC_COPY_PLUGINS), \
+		VENDOR_DIR=$(word 1,$(subst :, ,$(plugin))); \
+		TARGET_DIR=$(word 2,$(subst :, ,$(plugin))); \
+		echo "  $$TARGET_DIR"; \
+		docker compose exec $(CONTAINER) rm -rf custom/static-plugins/$$TARGET_DIR vendor/$$VENDOR_DIR; \
+	)
 
 	@echo "Installing required plugins via composer..."
 	docker compose exec $(CONTAINER) composer require $(COMPOSER_PLUGINS) --no-interaction
