@@ -206,7 +206,7 @@ KommandhubPaystackSW/
 ├── .php-cs-fixer.dist.php
 ├── docker-compose.yml
 ├── Makefile
-├── CHANGELOG_en-GB.md
+├── CHANGELOG.md                          # English; CHANGELOG_<locale>.md for translations
 └── CLAUDE.md                             # Contributor conventions (read this too)
 ```
 
