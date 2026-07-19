@@ -1,3 +1,18 @@
+# 0.9.0-beta.2
+
+Deuxième version préliminaire. Toujours destinée au développement interne, à
+l'assurance qualité et aux tests sandbox/staging ; pas encore soumise au
+Shopware Store.
+
+- La journalisation de débogage est désormais résolue par canal de vente. `enableDebugging` et les niveaux de journalisation sont des réglages de plugin ordinaires, configurables par canal de vente ; ils n'étaient auparavant lus qu'au niveau global, de sorte que l'activation sur un seul canal restait sans effet.
+- Les blocs de template de la vérification bancaire côté storefront sont désormais préfixés et n'entrent plus en conflit avec d'autres plugins étendant les mêmes templates de compte.
+- Passage de la licence MIT à la licence Apache 2.0 : concession de brevet explicite, réserve explicite des droits de marque et fichier `NOTICE` transmettant l'attribution aux forks.
+- Le plugin indique désormais clairement qu'il s'agit d'une intégration indépendante et tierce, non affiliée à Paystack ni approuvée par Paystack. Ajout d'une politique de marque et d'image (`TRADEMARKS.md`).
+- Les logos tiers utilisés comme icônes du plugin et de l'administration ont été remplacés par l'identité visuelle KommandHub.
+- Outils de build : `make prepare` fonctionne désormais avec les versions préliminaires et lors d'exécutions répétées, et le conteneur de test embarque `shopware-cli` pour la validation du plugin.
+
+---
+
 # 0.9.0-beta.1
 
 Version préliminaire pour le développement interne, l'assurance qualité et les
