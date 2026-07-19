@@ -117,7 +117,7 @@ class FinalizeProcessorTest extends TestCase
 
         $this->logger->expects($this->once())
             ->method('error')
-            ->with('Missing Paystack reference.', $this->isType('array'));
+            ->with('[Paystack] Missing transaction reference.', $this->isType('array'));
 
         $this->expectException(ShopwarePaymentException::class);
         $this->expectExceptionMessage('Payment reference is missing from request.');
@@ -173,7 +173,7 @@ class FinalizeProcessorTest extends TestCase
         $this->logger->expects($this->once())
             ->method('info')
             ->with(
-                'Paystack payment already processed.',
+                '[Paystack] Payment already processed.',
                 $this->callback(fn (array $context): bool => isset($context['reference'], $context['transaction_id']))
             );
 

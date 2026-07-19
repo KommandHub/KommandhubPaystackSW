@@ -49,7 +49,7 @@ readonly class PaymentProcessor
             $payload = $this->payloadBuilder->build($orderTransaction, $transaction);
             $response = $this->transactionService->initialize($payload);
         } catch (\RuntimeException $exception) {
-            $this->logger->error('Failed to build Paystack payment payload.', [
+            $this->logger->error('[Paystack] Failed to build the payment payload.', [
                 'transactionId' => $transactionId,
                 'exception' => $exception,
             ]);
@@ -59,7 +59,7 @@ readonly class PaymentProcessor
                 sprintf('Unable to prepare payment payload: %s', $exception->getMessage())
             );
         } catch (PaystackException $exception) {
-            $this->logger->error('Paystack communication error during initialization.', [
+            $this->logger->error('[Paystack] Communication error during initialization.', [
                 'transactionId' => $transactionId,
                 'exception' => $exception,
             ]);

@@ -1,11 +1,18 @@
 {
   "main.js": {
-    "file": "assets/kommandhub-paystack-s-w-DpuWP_xG.js",
+    "file": "assets/kommandhub-paystack-s-w-CbnlwT5p.js",
     "name": "kommandhub-paystack-s-w",
     "src": "main.js",
     "isEntry": true,
     "css": [
       "assets/kommandhub-paystack-s-w-Bqi7SZ4U.css"
+    ],
+    "assets": [
+      "assets/icon-DCLC8I4X.png"
     ]
+  },
+  "view/kommandhub-paystack-detail/icon.png": {
+    "file": "assets/icon-DCLC8I4X.png",
+    "src": "view/kommandhub-paystack-detail/icon.png"
   }
 }

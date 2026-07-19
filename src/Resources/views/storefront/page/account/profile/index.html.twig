@@ -3,21 +3,21 @@
 {% block page_account_profile_personal %}
     {{ parent() }}
 
-    {% block page_account_profile_bank_visibility %}
+    {% block page_account_profile_paystack_bank_visibility %}
         {% if config('KommandhubPaystackSW.config.collectBankData') %}
-            {% block page_account_profile_bank_card %}
+            {% block page_account_profile_paystack_bank_card %}
             <div class="card account-profile-bank mb-5">
                 <div class="card-body">
-                    {% block page_account_profile_bank_header %}
+                    {% block page_account_profile_paystack_bank_header %}
                         <div class="card-title">
                             {{ 'kommandhub-paystack.bankTitle'|trans|sw_sanitize }}
                         </div>
                     {% endblock %}
 
-                    {% block page_account_profile_bank_form %}
+                    {% block page_account_profile_paystack_bank_form %}
                         {% set customFields = context.customer.customFields %}
 
-                        {% block page_account_profile_bank_form_container %}
+                        {% block page_account_profile_paystack_bank_form_container %}
                             {% set paystackBankVerificationOptions = {
                                 banksUrl: path('frontend.paystack.bank.list'),
                                 verifyUrl: path('frontend.paystack.bank.verify'),
@@ -31,9 +31,9 @@
                                 data-paystack-bank-verification="true"
                                 data-paystack-bank-verification-options="{{ paystackBankVerificationOptions|default({})|json_encode|escape('html_attr') }}">
 
-                                {% block page_account_profile_bank_form_fields %}
+                                {% block page_account_profile_paystack_bank_form_fields %}
                                 <div class="row g-3">
-                                    {% block page_account_profile_bank_form_bank_name %}
+                                    {% block page_account_profile_paystack_bank_form_bank_name %}
                                         <div class="form-group col-12">
                                             <label class="form-label" for="bankName">
                                                 {{ 'kommandhub-paystack.bankNameLabel'|trans|sw_sanitize }}
@@ -41,7 +41,7 @@
                                             <select class="form-select"
                                                     id="bankName"
                                                     name="bankName">
-                                                {% block page_account_profile_bank_form_bank_name_options %}
+                                                {% block page_account_profile_paystack_bank_form_bank_name_options %}
                                                 <option value="" disabled selected>
                                                     {{ 'kommandhub-paystack.bankNamePlaceholder'|trans|sw_sanitize }}
                                                 </option>
@@ -50,7 +50,7 @@
                                         </div>
                                     {% endblock %}
 
-                                    {% block page_account_profile_bank_form_bvn %}
+                                    {% block page_account_profile_paystack_bank_form_bvn %}
                                         {% if config('KommandhubPaystackSW.config.showBvnField') %}
                                             <div class="form-group col-12">
                                                 <label class="form-label" for="bvn">
@@ -69,7 +69,7 @@
                                         {% endif %}
                                     {% endblock %}
 
-                                    {% block page_account_profile_bank_form_account_number %}
+                                    {% block page_account_profile_paystack_bank_form_account_number %}
                                         <div class="form-group col-md-6">
                                             <label class="form-label" for="accountNumber">
                                                 {{ 'kommandhub-paystack.accountNumberLabel'|trans|sw_sanitize }}
@@ -86,7 +86,7 @@
                                         </div>
                                     {% endblock %}
 
-                                    {% block page_account_profile_bank_form_account_name %}
+                                    {% block page_account_profile_paystack_bank_form_account_name %}
                                         <div class="form-group col-md-6">
                                             <label class="form-label" for="accountName">
                                                 {{ 'kommandhub-paystack.accountNameLabel'|trans|sw_sanitize }}
@@ -103,7 +103,7 @@
                                 </div>
                                 {% endblock %}
 
-                                {% block page_account_profile_bank_form_actions %}
+                                {% block page_account_profile_paystack_bank_form_actions %}
                                     <div class="form-actions mt-3">
                                         <button type="submit"
                                                 class="btn btn-light btn-sm">

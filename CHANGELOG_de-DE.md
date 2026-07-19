@@ -1,3 +1,17 @@
+# 0.9.0-beta.2
+
+Zweite Vorabversion. Weiterhin für interne Entwicklung, QA und Sandbox-/
+Staging-Tests; noch nicht im Shopware Store eingereicht.
+
+- Die Debug-Protokollierung wird jetzt pro Verkaufskanal ausgewertet. `enableDebugging` und die Log-Level sind normale Plugin-Einstellungen und lassen sich je Verkaufskanal setzen; bisher wurden sie nur global gelesen, sodass die Aktivierung für einen einzelnen Verkaufskanal wirkungslos blieb.
+- Die Template-Blöcke der Bankverifizierung im Storefront sind jetzt eindeutig benannt und kollidieren nicht mehr mit anderen Plugins, die dieselben Konto-Templates erweitern.
+- Lizenzwechsel von MIT zur Apache License 2.0: mit ausdrücklicher Patentlizenz, ausdrücklichem Markenvorbehalt und einer `NOTICE`-Datei, die die Urheberangaben in Forks weiterträgt.
+- Das Plugin weist nun deutlich darauf hin, dass es eine unabhängige Drittanbieter-Integration ist und nicht mit Paystack verbunden oder von Paystack unterstützt wird. Ergänzt um eine Marken- und Branding-Richtlinie (`TRADEMARKS.md`).
+- Die als Plugin- und Administrations-Icon verwendeten fremden Logos wurden durch KommandHub-Branding ersetzt.
+- Build-Werkzeuge: `make prepare` funktioniert jetzt auch mit Vorabversionen und bei wiederholten Läufen, und der Testcontainer enthält `shopware-cli` für die Plugin-Validierung.
+
+---
+
 # 0.9.0-beta.1
 
 Vorabversion für interne Entwicklung, QA und Sandbox-/Staging-Tests. Noch

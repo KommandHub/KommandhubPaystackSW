@@ -54,7 +54,7 @@ readonly class TransactionVerificationProcessor implements TransactionVerificati
         try {
             return $this->transactionService->verify($reference);
         } catch (\Throwable $e) {
-            $this->logger->error('Paystack verification API failure', [
+            $this->logger->error('[Paystack] Verification API failure.', [
                 'transactionId' => $transaction->getId(),
                 'reference' => $reference,
                 'error' => $e->getMessage(),
@@ -124,7 +124,8 @@ readonly class TransactionVerificationProcessor implements TransactionVerificati
         );
 
         if ((int)$paystackAmount !== $expected) {
-            $this->logger->warning('Paystack amount mismatch', [
+            $this->logger->warning('[Paystack] Amount mismatch.', [
+                ConfigurableLogger::CONTEXT_SALES_CHANNEL_ID => $order->getSalesChannelId(),
                 'transactionId' => $transaction->getId(),
                 'expected' => $expected,
                 'received' => (int)$paystackAmount,
@@ -157,7 +158,7 @@ readonly class TransactionVerificationProcessor implements TransactionVerificati
         $received = is_scalar($data['currency'] ?? null) ? strtoupper((string)$data['currency']) : '';
 
         if ($received !== $expected) {
-            $this->logger->warning('Paystack currency mismatch', [
+            $this->logger->warning('[Paystack] Currency mismatch.', [
                 'transactionId' => $transaction->getId(),
                 'expected' => $expected,
                 'received' => $received,
@@ -198,7 +199,7 @@ readonly class TransactionVerificationProcessor implements TransactionVerificati
             PaystackTransactionStatus::PROCESSING,
             PaystackTransactionStatus::QUEUED,
             PaystackTransactionStatus::ONGOING,
-            PaystackTransactionStatus::ABANDONED => $this->logger->info('Paystack transaction not final yet.', [
+            PaystackTransactionStatus::ABANDONED => $this->logger->info('[Paystack] Transaction not final yet.', [
                 'transactionId' => $transaction->getId(),
                 'status' => $statusValue,
             ]),

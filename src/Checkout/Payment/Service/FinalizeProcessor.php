@@ -59,7 +59,8 @@ readonly class FinalizeProcessor
         $reference = $this->extractReference($request, $transactionId);
 
         if ($this->isAlreadyProcessed($orderTransaction)) {
-            $this->logger->info('Paystack payment already processed.', [
+            $this->logger->info('[Paystack] Payment already processed.', [
+                ConfigurableLogger::CONTEXT_SALES_CHANNEL_ID => $orderTransaction->getOrder()?->getSalesChannelId(),
                 'transaction_id' => $transactionId,
                 'reference' => $reference,
             ]);
@@ -96,7 +97,8 @@ readonly class FinalizeProcessor
             $paystackTransactionId = is_scalar($id) ? (string)$id : '';
         }
 
-        $this->logger->info('Paystack payment finalized.', [
+        $this->logger->info('[Paystack] Payment finalized.', [
+            ConfigurableLogger::CONTEXT_SALES_CHANNEL_ID => $orderTransaction->getOrder()?->getSalesChannelId(),
             'transaction_id' => $transactionId,
             'reference' => $reference,
             'paystack_transaction_id' => $paystackTransactionId,
@@ -119,7 +121,7 @@ readonly class FinalizeProcessor
         $reference = $request->query->getString('reference');
 
         if ($reference === '') {
-            $this->logger->error('Missing Paystack reference.', [
+            $this->logger->error('[Paystack] Missing transaction reference.', [
                 'transaction_id' => $transactionId,
                 'query' => $request->query->all(),
             ]);

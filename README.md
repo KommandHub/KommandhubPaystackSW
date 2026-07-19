@@ -1,15 +1,21 @@
 # Paystack Payment for Shopware 6
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Shopware](https://img.shields.io/badge/Shopware-6.6%20%7C%206.7-blue.svg)](https://shopware.com)
 [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777bb4.svg)](https://www.php.net)
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%209-brightgreen.svg)](https://phpstan.org)
 
-![Shopware Paystack Logo](src/Resources/config/shopware.png)
+<p align="center">
+  <a href="https://kommandhub.com" target="_blank">
+    <img src="src/Resources/config/kommandhub.png" alt="Kommandhub Logo">
+  </a>
+</p>
 
 A production-grade **Shopware 6 payment plugin** that integrates the **[Paystack](https://paystack.com)** payment gateway, enabling merchants across Africa to accept secure online payments through cards, bank transfers, USSD, and mobile money.
 
 Developed by [Kommandhub Limited](https://kommandhub.com).
+
+> **Independent integration.** This is an independent, third-party plugin. It is **not** affiliated with, endorsed by, sponsored by, certified by, or officially supported by Paystack. "Paystack" and the Paystack logo are trademarks of their respective owner and are used here only to identify the payment gateway this plugin connects to. See [Trademarks & Disclaimer](#trademarks--disclaimer).
 
 This document is the technical reference for developers **contributing to** the plugin. If you only want to install and configure it on a live shop, the [Installation](#installation) and [Configuration](#configuration) sections are enough.
 
@@ -44,6 +50,7 @@ This document is the technical reference for developers **contributing to** the 
 - [Coding Standards](#coding-standards)
 - [Roadmap](#roadmap)
 - [License](#license)
+- [Trademarks & Disclaimer](#trademarks--disclaimer)
 - [Support](#support)
 
 ---
@@ -206,7 +213,7 @@ KommandhubPaystackSW/
 ├── .php-cs-fixer.dist.php
 ├── docker-compose.yml
 ├── Makefile
-├── CHANGELOG_en-GB.md
+├── CHANGELOG.md                          # English; CHANGELOG_<locale>.md for translations
 └── CLAUDE.md                             # Contributor conventions (read this too)
 ```
 
@@ -277,9 +284,16 @@ Default dockware credentials:
 
 ## Docker & Docker Compose
 
-The stack is defined in [`docker-compose.yml`](docker-compose.yml):
+The stack is defined in [`docker-compose.yml`](docker-compose.yml) and built from
+a small [`Dockerfile`](Dockerfile):
 
-- **Image**: `dockware/shopware:6.7.8.0`
+- **Base image**: `dockware/shopware:6.7.8.0`
+- **Added tooling**: [`shopware-cli`](https://sw-cli.fos.gg/) — the static binary
+  is copied from the upstream `shopware/shopware-cli:bin` image (latest stable,
+  ~50 MB, multi-arch), so no package manager or cleanup is involved. The build
+  runs `shopware-cli --version` so a broken install fails the image build rather
+  than the first `make validate-plugin`. Pin it for a reproducible build by
+  passing `--build-arg SHOPWARE_CLI_IMAGE=shopware/shopware-cli:bin@sha256:<digest>`.
 - **Container**: `kommandhub-paystack-plugin`
 - **PHP**: 8.3 (`XDEBUG_ENABLED` toggle available)
 - **Persistent volume**: `database` (MySQL data)
@@ -314,6 +328,12 @@ All targets run the underlying tools inside the running container.
 | `make fixture-load` | Load test fixtures |
 | `make resync` | Sync the test config into the shop root |
 | `make prepare` | Full project preparation (run by `make up`) |
+| `make validate-plugin` | Validate the plugin with `shopware-cli` (`--full --store-compliance`) |
+| `make cli` | Run any `shopware-cli` command: `make cli ARGS="extension get-version ."` |
+| `make changelog` | Render `CHANGELOG.md` as the Shopware Store would display it |
+| `make zip` | Build a distributable plugin zip into `build/` |
+
+`shopware-cli` ships inside the container image (see [Docker & Docker Compose](#docker--docker-compose)), so these run against the same PHP version and installed Shopware as the tests — not whatever is on the host. No local install is required.
 
 **Before committing, run:**
 
@@ -457,11 +477,17 @@ Logging goes through `Logging\ConfigurableLogger`, wired to the `paystack_channe
 4. Configure live secret keys and disable sandbox mode.
 5. Grant the **Paystack → Process Paystack refunds** permission to the roles that should be able to issue refunds (the built-in admin role already has all privileges).
 
-Validate a release build for the Shopware Store with:
+Validate a release build for the Shopware Store from inside the container, where
+`shopware-cli` runs against the installed Shopware and full vendor tree:
 
 ```bash
-shopware-cli extension validate . --full --store-compliance
+make validate-plugin
+# equivalently: make cli ARGS="extension validate . --full --store-compliance"
 ```
+
+Running the same command against a host-only `shopware-cli` reports false
+positives (see the PHPStan note under [Troubleshooting](#troubleshooting)) —
+the container has the dependencies it needs to resolve Shopware's classes.
 
 ---
 
@@ -561,7 +587,21 @@ Please also read [`CLAUDE.md`](CLAUDE.md) for the module boundaries and project-
 
 ## License
 
-Licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+Licensed under the **Apache License 2.0**. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for details.
+
+Apache-2.0 was chosen over a simpler permissive licence for its explicit patent grant, its explicit reservation of trademark rights (§6), and the `NOTICE` mechanism that carries attribution downstream into forks. The licence covers this plugin's **own source code only**. It grants **no rights** in the KommandHub name or logo (see [TRADEMARKS.md](TRADEMARKS.md)), nor in Paystack's trademarks, logos, or services (see [Trademarks & Disclaimer](#trademarks--disclaimer)).
+
+---
+
+## Trademarks & Disclaimer
+
+This plugin is an **independent, third-party integration** developed and maintained by [Kommandhub Limited](https://kommandhub.com). It is **not** affiliated with, endorsed by, sponsored by, certified by, or officially supported by Paystack or any of its affiliates.
+
+"Paystack", the Paystack logo, and any related names, marks, and logos are trademarks of their respective owner. "Shopware" is a registered trademark of shopware AG. All other trademarks referenced in this project are the property of their respective owners. These marks are used in this project solely for **nominative purposes** — to identify the third-party payment gateway and the platform that this plugin integrates with — and their use does not imply any endorsement, partnership, or affiliation.
+
+Use of the Paystack payment gateway is subject to Paystack's own terms of service and agreements, which are between the merchant and Paystack. This plugin merely provides a technical integration and makes no warranty regarding Paystack's services. To use it you must hold your own valid Paystack account and API credentials.
+
+**KommandHub's own marks** — the "KommandHub" name and logo — are trademarks of Kommandhub Limited. The open-source licence covers the code, not the brand: a fork must be **rebranded** before redistribution. The full policy is in [TRADEMARKS.md](TRADEMARKS.md).
 
 ---
 
