@@ -5,11 +5,17 @@
 [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777bb4.svg)](https://www.php.net)
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%209-brightgreen.svg)](https://phpstan.org)
 
-![Shopware Paystack Logo](src/Resources/config/shopware.png)
+<p align="center">
+  <a href="https://kommandhub.com" target="_blank">
+    <img src="src/Resources/config/kommandhub.png" alt="Kommandhub Logo">
+  </a>
+</p>
 
 A production-grade **Shopware 6 payment plugin** that integrates the **[Paystack](https://paystack.com)** payment gateway, enabling merchants across Africa to accept secure online payments through cards, bank transfers, USSD, and mobile money.
 
 Developed by [Kommandhub Limited](https://kommandhub.com).
+
+> **Independent integration.** This is an independent, third-party plugin. It is **not** affiliated with, endorsed by, sponsored by, certified by, or officially supported by Paystack. "Paystack" and the Paystack logo are trademarks of their respective owner and are used here only to identify the payment gateway this plugin connects to. See [Trademarks & Disclaimer](#trademarks--disclaimer).
 
 This document is the technical reference for developers **contributing to** the plugin. If you only want to install and configure it on a live shop, the [Installation](#installation) and [Configuration](#configuration) sections are enough.
 
@@ -44,6 +50,7 @@ This document is the technical reference for developers **contributing to** the 
 - [Coding Standards](#coding-standards)
 - [Roadmap](#roadmap)
 - [License](#license)
+- [Trademarks & Disclaimer](#trademarks--disclaimer)
 - [Support](#support)
 
 ---
@@ -581,6 +588,20 @@ Please also read [`CLAUDE.md`](CLAUDE.md) for the module boundaries and project-
 ## License
 
 Licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+
+The MIT License covers this plugin's own source code only. It grants no rights in the KommandHub name or logo, nor in Paystack's trademarks, logos, or services (see [Trademarks & Disclaimer](#trademarks--disclaimer)).
+
+---
+
+## Trademarks & Disclaimer
+
+This plugin is an **independent, third-party integration** developed and maintained by [Kommandhub Limited](https://kommandhub.com). It is **not** affiliated with, endorsed by, sponsored by, certified by, or officially supported by Paystack or any of its affiliates.
+
+"Paystack", the Paystack logo, and any related names, marks, and logos are trademarks of their respective owner. "Shopware" is a registered trademark of shopware AG. All other trademarks referenced in this project are the property of their respective owners. These marks are used in this project solely for **nominative purposes** — to identify the third-party payment gateway and the platform that this plugin integrates with — and their use does not imply any endorsement, partnership, or affiliation.
+
+Use of the Paystack payment gateway is subject to Paystack's own terms of service and agreements, which are between the merchant and Paystack. This plugin merely provides a technical integration and makes no warranty regarding Paystack's services. To use it you must hold your own valid Paystack account and API credentials.
+
+**KommandHub's own marks** — the "KommandHub" name and logo — are trademarks of Kommandhub Limited. The open-source licence covers the code, not the brand: a fork must be **rebranded** before redistribution. The full policy is in [TRADEMARKS.md](TRADEMARKS.md).
 
 ---
 
