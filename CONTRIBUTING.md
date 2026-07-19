@@ -2,6 +2,29 @@
 
 Contributions are **welcome** and will be fully **credited**.
 
+## Licensing of contributions
+
+This project is licensed under the [Apache License 2.0](LICENSE). Under Section 5
+of that license, **any contribution you submit is provided under the same
+license**, unless you explicitly state otherwise. You retain the copyright to
+your contribution.
+
+We use the **Developer Certificate of Origin (DCO)** rather than a Contributor
+License Agreement — a one-line assertion, added by signing off your commits,
+that you have the right to submit the code under the project license:
+
+```bash
+git commit -s -m "fix: correct refund balance rounding"
+```
+
+`-s` appends a `Signed-off-by:` line using your configured Git identity. The full
+text of what you are certifying is at <https://developercertificate.org>.
+
+## Trademarks
+
+The code license does **not** grant rights to the KommandHub name or logo. If you
+fork and redistribute your own version, you must rebrand it. See
+[TRADEMARKS.md](TRADEMARKS.md).
 
 ## Branching Strategy (GitHub Flow)
 

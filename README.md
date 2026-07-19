@@ -1,6 +1,6 @@
 # Paystack Payment for Shopware 6
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Shopware](https://img.shields.io/badge/Shopware-6.6%20%7C%206.7-blue.svg)](https://shopware.com)
 [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777bb4.svg)](https://www.php.net)
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%209-brightgreen.svg)](https://phpstan.org)
@@ -587,9 +587,9 @@ Please also read [`CLAUDE.md`](CLAUDE.md) for the module boundaries and project-
 
 ## License
 
-Licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+Licensed under the **Apache License 2.0**. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for details.
 
-The MIT License covers this plugin's own source code only. It grants no rights in the KommandHub name or logo, nor in Paystack's trademarks, logos, or services (see [Trademarks & Disclaimer](#trademarks--disclaimer)).
+Apache-2.0 was chosen over a simpler permissive licence for its explicit patent grant, its explicit reservation of trademark rights (§6), and the `NOTICE` mechanism that carries attribution downstream into forks. The licence covers this plugin's **own source code only**. It grants **no rights** in the KommandHub name or logo (see [TRADEMARKS.md](TRADEMARKS.md)), nor in Paystack's trademarks, logos, or services (see [Trademarks & Disclaimer](#trademarks--disclaimer)).
 
 ---
 

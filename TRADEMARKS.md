@@ -1,10 +1,10 @@
 # Trademark & Branding Policy
 
-This project's **code** is open source under the [MIT License](LICENSE). A
+This project's **code** is open source under the [Apache License 2.0](LICENSE). A
 licence to the code is **not** a licence to the project's **name, logo, or brand
 identity**. This policy explains the line between the two.
 
-It exists because the MIT License (like every open-source licence) lets anyone
+It exists because the Apache License (like every open-source licence) lets anyone
 fork, modify, redistribute, and even sell the code. What it does **not** let
 anyone do is pass their version off as *this* project, or as a product of
 Kommandhub Limited. Trademark law — not the code licence — is what protects the
@@ -22,13 +22,13 @@ The following are trademarks of **Kommandhub Limited** ("the Marks"):
 
 ## What you may do (no permission needed)
 
-- Use, modify, and redistribute the **code** under the MIT License.
+- Use, modify, and redistribute the **code** under the Apache License 2.0.
 - State, factually and accurately, that your product **is based on**, **is a
   fork of**, or **is derived from** this project — as long as you do not imply
   it is endorsed by or affiliated with Kommandhub Limited.
 - Use the Marks in **nominative** ways: unmodified references in prose,
   documentation, and comparisons ("compatible with KommandHub's plugin").
-- Keep the `LICENSE` file intact in redistributions (this is required by the
+- Keep the `LICENSE` and `NOTICE` files intact in redistributions (this is required by the
   licence, not optional).
 
 ## What you may not do (without written permission)
